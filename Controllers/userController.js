@@ -30,69 +30,110 @@ exports.sendOtp = async (req, res) => {
 };
 
 // Signup
+// Signup
 exports.signup = async (req, res) => {
-  const { email, phoneNumber, password, confirmPassword, otp } = req.body;
-  if (phoneNumber && otp) {
-    const user = await User.findOne({ phoneNumber });
-    if (!user || user.otp !== otp || user.otpExpiry < new Date())
-      return res.status(400).json({ message: "Invalid or expired OTP." });
+  const { name, email, phoneNumber, password, confirmPassword, otp } = req.body;
+
+  try {
+    let user;
     
-    user.otp = undefined;
-    user.otpExpiry = undefined;
-    if (email) user.email = email;
-    if (password) user.password = await bcrypt.hash(password, 10);
-    await user.save();
-    return res.status(201).json({ message: "User registered successfully." });
+    if (phoneNumber && otp) {
+      user = await User.findOne({ phoneNumber });
+      if (!user || user.otp !== otp || user.otpExpiry < new Date())
+        return res.status(400).json({ message: "Invalid or expired OTP." });
+
+      user.otp = undefined;
+      user.otpExpiry = undefined;
+      if (name) user.name = name;
+      if (email) user.email = email;
+      if (password) user.password = await bcrypt.hash(password, 10);
+      await user.save();
+    } 
+    else if (email && password && confirmPassword) {
+      if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) return res.status(400).json({ message: "Email already registered." });
+
+      user = await new User({ name, email, password: await bcrypt.hash(password, 10) }).save();
+    } 
+    else {
+      return res.status(400).json({ message: "Invalid signup data." });
+    }
+
+    const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    return res.status(201).json({
+      message: "User registered successfully.",
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phoneNumber: user.phoneNumber }
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Signup error.", error: error.message });
   }
-  if (email && password && confirmPassword) {
-    if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already registered." });
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await new User({ email, password: hashedPassword }).save();
-    return res.status(201).json({ message: "User registered successfully." });
-  }
-  res.status(400).json({ message: "Invalid signup data." });
 };
+
 
 // Google Signup/Login
 exports.googleAuth = async (req, res) => {
   const { token } = req.body;
+
   try {
     const ticket = await googleClient.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
-    const { email, name } = ticket.getPayload();
+    const { email, name, picture } = ticket.getPayload(); // 🔹 Google se name aur profile picture le rahe hain
+
     let user = await User.findOne({ email });
-    if (!user) user = await new User({ email }).save();
+
+    if (!user) {
+      user = await new User({ name, email, googleId: ticket.getUserId(), profilePicture: picture, authMethod: "google" }).save(); // 🔹 Name & profile picture save kar rahe hain
+    }
+
     const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-    res.status(200).json({ message: "Google auth successful.", token: jwtToken });
+
+    res.status(200).json({ message: "Google auth successful.", token: jwtToken, user: { name: user.name, email: user.email, profilePicture: user.profilePicture } });
   } catch (error) {
     res.status(500).json({ message: "Google authentication failed.", error: error.message });
   }
 };
 
+
+
+// Login
 // Login
 exports.login = async (req, res) => {
   const { email, password, phoneNumber, otp } = req.body;
   try {
+    let user;
+
     if (email && password) {
-      const user = await User.findOne({ email });
+      user = await User.findOne({ email });
       if (!user || !user.password) return res.status(404).json({ message: "User not found or password not set." });
+
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) return res.status(401).json({ message: "Invalid email or password." });
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-      return res.status(200).json({ message: "Login successful.", token });
-    }
-    if (phoneNumber && otp) {
-      const user = await User.findOne({ phoneNumber });
-      if (!user || user.otp !== otp || user.otpExpiry < new Date())
+    } 
+    else if (phoneNumber && otp) {
+      user = await User.findOne({ phoneNumber });
+      if (!user || user.otp !== otp || user.otpExpiry < new Date()) 
         return res.status(400).json({ message: "Invalid or expired OTP." });
+
       user.otp = undefined;
       user.otpExpiry = undefined;
       await user.save();
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-      return res.status(200).json({ message: "Login successful.", token });
+    } 
+    else {
+      return res.status(400).json({ message: "Invalid login credentials." });
     }
-    res.status(400).json({ message: "Invalid login credentials." });
+
+    const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+    return res.status(200).json({ 
+      message: "Login successful.", 
+      token,
+      user: { id: user._id, name: user.name, email: user.email, phoneNumber: user.phoneNumber }
+    });
+
   } catch (error) {
     res.status(500).json({ message: "Login error.", error: error.message });
   }

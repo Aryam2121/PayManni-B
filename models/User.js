@@ -2,6 +2,9 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+  },
   email: {
     type: String,
     unique: true,
@@ -19,19 +22,29 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
+    select: false, // Don't return password in queries by default
   },
-  otp: String,
-  otpExpiry: Date,
+  profilePicture: {
+    type: String, // Store Google profile image URL
+  },
+  otp: {
+    type: String,
+    select: false, // Hide OTP from responses
+  },
+  otpExpiry: {
+    type: Date,
+    select: false, // Hide OTP expiry from responses
+  },
   authMethod: {
     type: String,
     enum: ["google", "email-password", "phone-otp"],
-    required: true,
+    default: "email-password",
   },
 });
 
 // Hash password before saving
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password") || !this.password) return next(); 
+  if (!this.isModified("password") || !this.password) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -40,5 +53,12 @@ userSchema.pre("save", async function (next) {
     next(error);
   }
 });
+
+// Remove OTP after successful verification
+userSchema.methods.clearOTP = async function () {
+  this.otp = undefined;
+  this.otpExpiry = undefined;
+  await this.save();
+};
 
 module.exports = mongoose.model("User", userSchema);
