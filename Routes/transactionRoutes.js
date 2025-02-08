@@ -1,9 +1,12 @@
-// routes/transactionRoutes.js
 const express = require('express');
-const { createTransaction, getTransactions } = require('../Controllers/TransactionController');
+const { rechargeAccount, getTransactions } = require("../Controllers/TransactionController.js");
+
 const router = express.Router();
 
-router.post('/sendTrans', createTransaction);
-router.get('/getTrans', getTransactions);
+// Recharge Route
+router.post("/recharge", rechargeAccount);
 
-module.exports = router;
+// Get Transaction History
+router.get("/recharge/:userId/transactions", getTransactions);
+
+module.exports = router;  

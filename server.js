@@ -14,11 +14,12 @@ require("./config/passport");
 
 // 🔹 Routes Import
 const userRoutes = require("./Routes/userRoutes");
-const RechargeRoutes = require("./Routes/RechargeRoutes");
 const WalletRoutes = require("./Routes/WalletRoutes");
 const contactRoutes = require("./Routes/ContactRoutes");
 const transactionRoutes = require("./Routes/transactionRoutes");
-
+const loanRoutes = require("./Routes/loanRoutes");
+const flightRoutes = require("./Routes/flightRoutes");
+const trainroutes = require("./Routes/trainRoutes");
 // 🔹 Middlewares
 app.use(express.json());
 
@@ -57,12 +58,13 @@ const connectDB = async () => {
 connectDB();
 
 // 🔹 API Routes
+app.use("/api", loanRoutes);
 app.use("/api/auth", userRoutes);
-app.use("/api/recharge", RechargeRoutes);
-app.use("/api/wallet", WalletRoutes);
+app.use("/api", WalletRoutes);
 app.use("/api/contact", contactRoutes);
-app.use("/api/transactions", transactionRoutes);
-
+app.use("/api", transactionRoutes);
+app.use("/api", flightRoutes);
+app.use("/api", trainroutes);
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
