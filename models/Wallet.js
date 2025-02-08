@@ -1,17 +1,27 @@
-const mongoose = require("mongoose");
+// models/walletModel.js
+let wallet = {
+  balance: 5000,
+  transactions: [],
+};
 
-const transactionSchema = new mongoose.Schema({
-  amount: { type: Number, required: true },
-  type: { type: String, required: true },
-  date: { type: Date, default: Date.now },
-});
+const getWallet = () => wallet;
 
-const walletSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  balance: { type: Number, default: 0 },
-  transactions: [transactionSchema],
-});
+const updateBalance = (amount) => {
+  wallet.balance += amount;
+};
 
-const Wallet = mongoose.model("Wallet", walletSchema);
+const addTransaction = (amount, type) => {
+  const transaction = {
+    id: wallet.transactions.length + 1,
+    amount,
+    type,
+    date: new Date().toLocaleString(),
+  };
+  wallet.transactions.push(transaction);
+};
 
-module.exports = Wallet;
+module.exports = {
+  getWallet,
+  updateBalance,
+  addTransaction,
+};

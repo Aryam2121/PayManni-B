@@ -195,9 +195,7 @@ exports.signup = async (req, res) => {
 
     // Handle OTP login (Only if phoneNumber and OTP are provided)
     if (phoneNumber && otp) {
-      user = await User.findOne({ phoneNumber });
-
-      if (!user) return res.status(400).json({ message: "User not found." });
+      // user = await User.findOne({ phoneNumber });
 
       console.log("Stored OTP in DB:", user.otp);
       console.log("Stored OTP Expiry in DB:", new Date(user.otpExpiry));

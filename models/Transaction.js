@@ -1,10 +1,13 @@
-// models/Transaction.js
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
-const TransactionSchema = new mongoose.Schema({
-  contactId: { type: mongoose.Schema.Types.ObjectId, ref: 'Contact', required: true },
+const transactionSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
   amount: { type: Number, required: true },
-  date: { type: Date, default: Date.now },
+  paymentMethod: { type: String, required: true },
+  promoCode: { type: String },
+  transactionDate: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Transaction', TransactionSchema);
+const Transaction = mongoose.model("Transaction", transactionSchema);
+
+export default Transaction;
