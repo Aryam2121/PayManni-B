@@ -1,7 +1,7 @@
 // routes/walletRoutes.js
 const express = require("express");
 const router = express.Router();
-const walletController = require("../Controllers/walletController");
+const walletController = require("../Controllers/WalletController.js");
 
 // Route for fetching wallet details
 router.get("/wallet", walletController.getWalletDetails);

@@ -149,6 +149,7 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // 📌 Send OTP
+// 📌 Send OTP
 exports.sendOtp = async (req, res) => {
   const { phoneNumber } = req.body;
   if (!phoneNumber) return res.status(400).json({ message: "Phone number is required." });
@@ -156,8 +157,11 @@ exports.sendOtp = async (req, res) => {
 
   try {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log(`Generated OTP: ${otp}`); // Add this log
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 min validity
+    console.log(`OTP Expiry: ${user.otpExpiry}, Current Time: ${new Date()}`);
 
+ 
     let user = await User.findOne({ phoneNumber });
 
     if (user && new Date(user.otpExpiry) > new Date()) {
@@ -171,6 +175,7 @@ exports.sendOtp = async (req, res) => {
       user.otpExpiry = otpExpiry;
     }
 
+    // Save the user object with OTP and expiry
     await user.save();
     console.log(`OTP Sent: ${otp} to ${phoneNumber}`); // Debugging log
 
@@ -186,6 +191,10 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
+
+// 📌 Signup
+// 📌 Signup
+// 📌 Signup
 // 📌 Signup
 exports.signup = async (req, res) => {
   const { name, email, phoneNumber, password, confirmPassword, otp } = req.body;
@@ -193,44 +202,51 @@ exports.signup = async (req, res) => {
   try {
     let user;
 
-    // Handle OTP login (Only if phoneNumber and OTP are provided)
+    // Phone number and OTP logic
     if (phoneNumber && otp) {
-      // user = await User.findOne({ phoneNumber });
+      user = await User.findOne({ phoneNumber });
+      if (!user || !user.otp) {
+        return res.status(400).json({ message: "OTP not found. Please request a new OTP." });
+      }
 
-      console.log("Stored OTP in DB:", user.otp);
-      console.log("Stored OTP Expiry in DB:", new Date(user.otpExpiry));
-      console.log("Current Time:", new Date());
-      console.log("Entered OTP:", otp);
-
+      // Check if the OTP matches and if it's still valid
       if (user.otp.toString().trim() !== otp.toString().trim()) {
         return res.status(400).json({ message: "Invalid OTP." });
       }
 
+      // Check if OTP has expired
       if (new Date(user.otpExpiry) < new Date()) {
         return res.status(400).json({ message: "OTP expired." });
       }
 
-      user.otp = null;
-      user.otpExpiry = null;
+      user.otp = null;  // Clear OTP after successful validation
+      user.otpExpiry = null;  // Clear OTP expiry
+
+      // Update user details
       if (name) user.name = name;
       if (email) user.email = email;
-      if (password) user.password = await bcrypt.hash(password, 10);
+      if (password) user.password = await bcrypt.hash(password, 10); // Hash password if provided
 
       await user.save();
-    } 
-    // Handle email-password signup (If phoneNumber is not provided)
+    }
+    // Email and Password signup
     else if (email && password && confirmPassword) {
       if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
 
       const existingUser = await User.findOne({ email });
       if (existingUser) return res.status(400).json({ message: "Email already registered." });
 
-      // Create new user with email and password only
-      let newUserData = { name, email, password: await bcrypt.hash(password, 10) };
+      // If phoneNumber is empty, set it to null
+      let newUserData = { 
+        name, 
+        email, 
+        password: await bcrypt.hash(password, 10) // Hash password
+      };
 
-      // Add phoneNumber only if it's not null or undefined
-      if (phoneNumber && phoneNumber !== null && phoneNumber !== '') {
+      if (phoneNumber && phoneNumber !== "") {
         newUserData.phoneNumber = phoneNumber;
+      } else {
+        newUserData.phoneNumber = null;  // Set to null if empty
       }
 
       user = await new User(newUserData).save();
@@ -238,6 +254,7 @@ exports.signup = async (req, res) => {
       return res.status(400).json({ message: "Invalid signup data." });
     }
 
+    // Create JWT token
     const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     return res.status(201).json({
@@ -250,6 +267,8 @@ exports.signup = async (req, res) => {
     res.status(500).json({ message: "Signup error.", error: error.message });
   }
 };
+
+
 
 // Google Signup/Login
 exports.googleAuth = async (req, res) => {
@@ -282,26 +301,41 @@ exports.login = async (req, res) => {
   try {
     let user;
 
+    // Case 1: Email and Password Login
     if (email && password) {
-      user = await User.findOne({ email });
-      if (!user || !user.password) return res.status(404).json({ message: "User not found or password not set." });
+      console.log("Trying to login with email:", email);
+      console.log("Received password:", password);  // Debugging log
 
+      console.log("Querying for user with email:", email);
+      user = await User.findOne({ email: email });
+      console.log("User found:", user);
+
+      if (!user || !user.password) {
+        console.log("User not found or password not set.");
+        return res.status(404).json({ message: "User not found or password not set." });
+      }
+
+      console.log("Stored hashed password:", user.password);  // Debugging log
+
+      // Compare password with stored hash
       const isMatch = await bcrypt.compare(password, user.password);
+      console.log("Password comparison result:", isMatch);
+
       if (!isMatch) {
-        // Agar password galat ho, toh SendGrid se OTP bhejo email pe
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        // Password mismatch, send OTP to email
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes validity
 
-        user.otp = otp;
+        user.otp = generatedOtp;
         user.otpExpiry = otpExpiry;
         await user.save();
 
         // Send OTP via SendGrid
         const msg = {
-          to: email,  // User's email
-          from: 'aryamangupta2121@gmail.com',  // Aapka verified SendGrid email
+          to: email,
+          from: 'aryamangupta2121@gmail.com',
           subject: 'Your OTP for Login',
-          text: `Your OTP is: ${otp}`,
+          text: `Your OTP is: ${generatedOtp}`,
         };
 
         await sendGridMail.send(msg);
@@ -311,21 +345,41 @@ exports.login = async (req, res) => {
           otpRequired: true,
         });
       }
-    } 
-    // Case 2: Phone Number and OTP Login (Ye pehle wale jaise hi hai)
+    }
+
+    // Case 2: Phone Number and OTP Login
     else if (phoneNumber && otp) {
       user = await User.findOne({ phoneNumber });
-
       if (!user) return res.status(400).json({ message: "User not found." });
 
+      // Check if OTP exists for phone login
+      if (!user.otp) {
+        // Generate OTP if not already generated
+        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes validity
+
+        user.otp = generatedOtp;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        // Send OTP to phone number (you can use SMS service like Twilio here)
+        return res.status(401).json({
+          message: "OTP sent to your phone.",
+          otpRequired: true,
+        });
+      }
+
+      // Check OTP validity
       if (user.otp.toString().trim() !== otp.toString().trim()) {
         return res.status(400).json({ message: "Invalid OTP." });
       }
 
+      // Check if OTP expired
       if (new Date(user.otpExpiry) < new Date()) {
         return res.status(400).json({ message: "OTP expired." });
       }
 
+      // Clear OTP after successful validation
       user.otp = null;
       user.otpExpiry = null;
       await user.save();
@@ -333,6 +387,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid login credentials." });
     }
 
+    // Create JWT token
     const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     return res.status(200).json({

@@ -1,7 +1,8 @@
 const axios = require("axios");
 const Flight = require("../models/Flight");
+require("dotenv").config();  // Make sure to require dotenv
 
-const API_KEY = "2879a8f6054dadf0a1f4cc3567a9d006"; // Teri API Key
+const API_KEY = process.env.AVIATION_API_KEY;
 const BASE_URL = "http://api.aviationstack.com/v1/flights";
 
 // ✅ Fetch all flights from the database
@@ -24,15 +25,15 @@ const fetchAndStoreFlights = async (req, res) => {
     }
 
     const flightsData = response.data.data.map(flight => ({
-      airline: flight.airline.name,
-      departure: flight.departure.iata,
-      arrival: flight.arrival.iata,
+      airline: flight.airline.name || "Unknown",
+      departure: flight.departure.iata || "Unknown",
+      arrival: flight.arrival.iata || "Unknown",
       duration: flight.flight_time || "Unknown",
-      price: Math.floor(Math.random() * 5000) + 2000, // Random price (modify as needed)
+      price: Math.floor(Math.random() * 5000) + 2000,
       departureDate: flight.departure.estimated || flight.departure.scheduled,
-      returnDate: null, // API me return date nahi hoti
-      passengers: Math.floor(Math.random() * 200) + 50, // Random passengers
-      travelClass: "Economy" // Default value
+      returnDate: null,
+      passengers: Math.floor(Math.random() * 200) + 50,
+      travelClass: "Economy"
     }));
 
     const savedFlights = await Flight.insertMany(flightsData);
@@ -65,26 +66,27 @@ const addMultipleFlights = async (req, res) => {
 
 // ✅ Search flights with filters
 const searchFlights = async (req, res) => {
-    const { from, to, departureDate, returnDate, passengers, travelClass } = req.body;
-    const filters = { departure: from, arrival: to, departureDate };
-    if (returnDate) filters.returnDate = returnDate;
-    if (passengers) filters.passengers = passengers;
-    if (travelClass) filters.travelClass = travelClass;
-  
-    console.log("Search filters:", filters); // Log the filters to inspect
-    
-    try {
-      const flights = await Flight.find(filters);
-      console.log("Flights found:", flights); // Log the result to see if flights match
-      if (flights.length === 0) {
-        return res.status(404).json({ message: "No flights found for the given criteria" });
-      }
-      res.status(200).json(flights);
-    } catch (error) {
-      res.status(500).json({ message: "Error fetching flights", error: error.message });
+  const { from, to, departureDate, returnDate, passengers, travelClass } = req.body;
+
+  // Flexible filter creation
+  const filters = {};
+  if (from) filters.departure = from;
+  if (to) filters.arrival = to;
+  if (departureDate) filters.departureDate = departureDate;
+  if (returnDate) filters.returnDate = returnDate;
+  if (passengers) filters.passengers = passengers;
+  if (travelClass) filters.travelClass = travelClass;
+
+  try {
+    const flights = await Flight.find(filters);
+    if (flights.length === 0) {
+      return res.status(404).json({ message: "No flights found for the given criteria" });
     }
-  };
-  
+    res.status(200).json(flights);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching flights", error: error.message });
+  }
+};
 
 // ✅ Get flight details by ID
 const getFlightDetails = async (req, res) => {
