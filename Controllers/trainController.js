@@ -1,4 +1,3 @@
-// controllers/trainController.js
 const https = require('https');
 
 const getTrains = (req, res) => {
@@ -10,7 +9,7 @@ const getTrains = (req, res) => {
     port: null,
     path: '/v1/railways/trains/india',
     headers: {
-      'x-rapidapi-key': 'aef7d418bemsh6e5815a7bf75a54p1db7f0jsnb9ddbd44c9d0',
+      'x-rapidapi-key': process.env.RAPIDAPI_KEY,  // Use environment variable for the API key
       'x-rapidapi-host': 'trains.p.rapidapi.com',
       'Content-Type': 'application/json',
     },
@@ -24,12 +23,20 @@ const getTrains = (req, res) => {
     });
 
     response.on('end', () => {
-      const trains = JSON.parse(data);  // Parse the response
-      const filteredTrains = trains.filter(train => 
-        train.from === from && train.to === to
-      );
-      res.json(filteredTrains);  // Send filtered trains to the frontend
+      try {
+        const trains = JSON.parse(data);  // Parse the response
+        const filteredTrains = trains.filter(train => 
+          train.from === from && train.to === to
+        );
+        res.json(filteredTrains);  // Send filtered trains to the frontend
+      } catch (error) {
+        res.status(500).json({ message: 'Error parsing the response from API' });
+      }
     });
+  });
+
+  request.on('error', (error) => {
+    res.status(500).json({ message: 'Error fetching data from the API', error: error.message });
   });
 
   const requestData = {

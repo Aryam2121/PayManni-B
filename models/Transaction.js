@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({
   userId: { type: String, required: true },
@@ -6,8 +6,9 @@ const transactionSchema = new mongoose.Schema({
   paymentMethod: { type: String, required: true },
   promoCode: { type: String },
   transactionDate: { type: Date, default: Date.now },
+  contacts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Contact' }]  // Reference to Contact model
 });
 
-const Transaction = mongoose.model("Transaction", transactionSchema);
 
-export default Transaction;
+const Transaction = mongoose.model("Transaction", transactionSchema);
+module.exports = Transaction;
