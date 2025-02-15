@@ -41,29 +41,51 @@ app.post("/create-order", async (req, res) => {
     const options = {
       amount: req.body.amount * 100, // Convert INR to paise
       currency: "INR",
-      receipt: "order_rcptid_" + Date.now(),
+      accept_partial: false,
+      expire_by: Math.floor(Date.now() / 1000) + 3600, // Expires in 1 hour
+      reference_id: "txn_" + Date.now(),
+      description: "Payment for Order",
+      customer: {
+        name: req.body.name,
+        contact: req.body.contact,
+        email: req.body.email,
+      },
+      notify: {
+        sms: true,
+        email: true,
+      },
+      callback_url: process.env.CLIENT_URL + "/payment-success",
+      callback_method: "get",
     };
 
-    const order = await razorpay.orders.create(options);
-    res.json({ success: true, order });
+    const paymentLink = await razorpay.paymentLink.create(options);
+
+    res.json({ success: true, payment_link: paymentLink.short_url });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
+
 // ✅ 2️⃣ PAYMENT VERIFICATION API
 app.post("/verify-payment", (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-  const generated_signature = crypto
-    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-    .update(razorpay_order_id + "|" + razorpay_payment_id)
+  const receivedSignature = req.headers["x-razorpay-signature"];
+  const generatedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(req.body))
     .digest("hex");
 
-  if (generated_signature === razorpay_signature) {
-    res.json({ success: true, message: "Payment Verified Successfully" });
+  if (generatedSignature === receivedSignature) {
+    if (req.body.event === "payment_link.paid") {
+      console.log("✅ Payment verified for Payment Link:", req.body.payload.payment_link.entity.id);
+      res.json({ success: true, message: "Payment Verified Successfully" });
+    } else {
+      res.json({ success: false, message: "Event Not Handled" });
+    }
   } else {
-    res.status(400).json({ success: false, message: "Payment Verification Failed" });
+    res.status(400).json({ success: false, message: "Invalid Signature" });
   }
 });
 
