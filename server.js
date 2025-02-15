@@ -10,10 +10,7 @@ const crypto = require("crypto");
 dotenv.config();
 
 const app = express();
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+
 // 🔹 Passport Config Import
 require("./config/passport");
 
