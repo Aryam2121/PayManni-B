@@ -1,5 +1,5 @@
 // controllers/walletController.js
-const Wallet = require("../models/wallet");
+const Wallet = require("../models/Wallet.js");
 
 // Get wallet details (balance and transactions)
 const getWalletDetails = (req, res) => {
