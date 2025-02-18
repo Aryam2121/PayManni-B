@@ -28,12 +28,11 @@ const SplitPaymentRoutes = require("./Routes/Split-paymentRoutes");
 app.use(express.json());
 
 // ✅ Improved CORS Configuration
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "*",
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: ['http://localhost:5173','https://pay-manni.vercel.app'],  // Adjust this to your frontend URL
+  methods: 'GET,POST,PUT,DELETE',
+  allowedHeaders: 'Content-Type,Authorization'
+}));
 app.post("/create-order", async (req, res) => {
   try {
     const options = {

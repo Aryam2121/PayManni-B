@@ -27,24 +27,28 @@ exports.getGroups = async (req, res) => {
 };
 
 // Add a user to a group
+// Add a user to a group
 exports.addUserToGroup = async (req, res) => {
-  try {
-    const { groupId, userName } = req.body;
-    if (!groupId || !userName) {
-      return res.status(400).json({ message: "Group ID and user name are required." });
+    try {
+      const { groupId, userName } = req.body;
+      const group = await Group.findById(groupId);
+      if (!group) return res.status(404).json({ message: "Group not found." });
+  
+      // Check if user already exists
+      const userExists = group.members.some(user => user.name === userName);
+      if (userExists) return res.status(400).json({ message: "User already in the group." });
+  
+      // Add new user to group
+      group.members.push({ name: userName, payment: 0 });
+      await group.save();
+  
+      res.status(200).json(group);
+    } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(500).json({ message: error.message });
     }
-
-    const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ message: "Group not found." });
-
-    group.members.push({ name: userName, payment: 0 });
-    await group.save();
-    res.status(200).json(group);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
+  };
+  
 // Remove a user from a group
 exports.removeUserFromGroup = async (req, res) => {
   try {
