@@ -23,6 +23,7 @@ const loanRoutes = require("./Routes/loanRoutes");
 const flightRoutes = require("./Routes/flightRoutes");
 const trainroutes = require("./Routes/trainRoutes");
 const BusRoutes = require("./Routes/BusRoutes");
+const SplitPaymentRoutes = require("./Routes/Split-paymentRoutes");
 // 🔹 Middlewares
 app.use(express.json());
 
@@ -121,6 +122,7 @@ app.use("/api", transactionRoutes);
 app.use("/api", flightRoutes);
 app.use("/api", trainroutes);
 app.use("/api", BusRoutes);
+app.use("/api",SplitPaymentRoutes);
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
