@@ -62,4 +62,5 @@ userSchema.methods.clearOTP = async function () {
   await this.save();
 };
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+module.exports = User;
