@@ -1,6 +1,11 @@
 const Contact = require('../models/Contact');
 const Transaction = require('../models/Transaction');
 const { validationResult } = require('express-validator');
+const Razorpay = require('razorpay');
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,  // Your Razorpay key ID
+  key_secret: process.env.RAZORPAY_KEY_SECRET  // Your Razorpay key secret
+});
 
 // Get all contacts
 exports.getContacts = async (req, res) => {
@@ -57,36 +62,43 @@ exports.updateContact = async (req, res) => {
 exports.sendMoney = async (req, res) => {
   const { userId, amount, paymentMethod, contacts } = req.body;
 
-  // Validate required fields
   if (!paymentMethod || !userId || !amount || !contacts) {
     return res.status(400).json({ error: 'Missing required fields: paymentMethod, userId, amount, or contacts.' });
   }
 
-  // Validate that the amount is a valid number and greater than 0
   if (isNaN(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Invalid amount. Amount must be a positive number.' });
   }
 
   try {
-    // Check if all contacts exist in the database
     const existingContacts = await Contact.find({ '_id': { $in: contacts } });
     if (existingContacts.length !== contacts.length) {
       return res.status(404).json({ message: 'One or more contacts not found' });
     }
 
-    // Create a new transaction
+    // Step 1: Create Razorpay Order
+    const options = {
+      amount: amount * 100,  // Convert INR to paise
+      currency: 'INR',
+      receipt: `txn_${Date.now()}`,
+      payment_capture: 1,  // Auto capture payment
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Step 2: Save Transaction in Database
     const transaction = new Transaction({
       userId,
       amount,
       paymentMethod,
       contacts,
+      razorpayOrderId: order.id,
     });
 
-    // Save the transaction to the database
     await transaction.save();
 
-    // Return the saved transaction
-    res.status(201).json(transaction);
+    // Step 3: Send the payment link/order ID to the frontend
+    res.status(201).json({ success: true, orderId: order.id, amount: amount, currency: 'INR' });
   } catch (error) {
     console.error('Error processing transaction:', error);
     res.status(500).json({ message: 'Server error while processing the transaction.' });
