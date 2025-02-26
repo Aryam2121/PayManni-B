@@ -73,27 +73,35 @@ app.post("/create-order", async (req, res) => {
 
 // ✅ 2️⃣ PAYMENT VERIFICATION API
 app.post("/verify-payment", (req, res) => {
-  try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const receivedSignature = req.headers["x-razorpay-signature"];
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    const expectedSignature = crypto
-      .createHmac("sha256", secret)
-      .update(JSON.stringify(req.body))
-      .digest("hex");
+  // 🔹 Get the received signature from Razorpay header
+  const receivedSignature = req.headers["x-razorpay-signature"];
 
-    if (expectedSignature === receivedSignature) {
-      console.log("✅ Payment verified for:", req.body.payload.payment.entity.id);
+  // 🔹 Generate signature from request body
+  const generatedSignature = crypto
+    .createHmac("sha256", secret)
+    .update(JSON.stringify(req.body)) // Make sure req.body is exactly as received
+    .digest("hex");
+
+  console.log("🔹 Received Signature:", receivedSignature);
+  console.log("🔹 Generated Signature:", generatedSignature);
+
+  if (generatedSignature === receivedSignature) {
+    console.log("✅ Payment verified!");
+
+    if (req.body.event === "payment_link.paid") {
+      console.log("💰 Payment ID:", req.body.payload.payment.entity.id);
       return res.json({ success: true, message: "Payment Verified Successfully" });
     } else {
-      return res.status(400).json({ success: false, message: "Invalid Signature" });
+      return res.json({ success: false, message: "Event Not Handled" });
     }
-
-  } catch (error) {
-    console.error("Error verifying payment:", error);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
+  } else {
+    console.log("❌ Invalid Signature! Possible issue with secret or body format.");
+    return res.status(400).json({ success: false, message: "Invalid Signature" });
   }
 });
+
 
 // ✅ Secure Session Handling
 app.use(session({
