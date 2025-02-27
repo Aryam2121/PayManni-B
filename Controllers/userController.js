@@ -200,44 +200,56 @@ exports.signup = async (req, res) => {
   try {
     let user;
 
+    // 📌 Phone + OTP Signup
     if (phoneNumber && otp) {
       user = await User.findOne({ phoneNumber });
-      if (!user || user.otp !== otp) return res.status(400).json({ message: "Invalid or expired OTP." });
 
-      if (new Date(user.otpExpiry) < new Date()) return res.status(400).json({ message: "OTP expired." });
+      if (!user) return res.status(400).json({ message: "Phone number not found. Please request an OTP first." });
 
+      if (user.otp !== otp) return res.status(400).json({ message: "Invalid OTP." });
+
+      if (new Date(user.otpExpiry) < Date.now()) return res.status(400).json({ message: "OTP expired." });
+
+      // 🔹 Clear OTP after successful verification
       user.otp = null;
       user.otpExpiry = null;
 
+      // 🔹 Update User Info
       if (name) user.name = name;
       if (email) user.email = email;
       if (password) user.password = await bcrypt.hash(password, 10);
 
       await user.save();
-    } else if (email && password && confirmPassword) {
+    } 
+    // 📌 Email + Password Signup (NO Phone Number Required)
+    else if (email && password && confirmPassword) {
       if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match." });
 
+      // ✅ Check if email is already registered
       if (await User.findOne({ email })) return res.status(400).json({ message: "Email already registered." });
 
       user = new User({
         name,
         email,
         password: await bcrypt.hash(password, 10),
-        phoneNumber: null,
       });
 
       await user.save();
-    } else {
+    } 
+    // ❌ Invalid Data Case
+    else {
       return res.status(400).json({ message: "Invalid signup data." });
     }
 
+    // 📌 Generate JWT Token
     const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.status(201).json({
       message: "User registered successfully.",
       token,
-      user: { id: user._id, name: user.name, email: user.email, phoneNumber: user.phoneNumber },
+      user: { id: user._id, name: user.name, email: user.email },
     });
+
   } catch (error) {
     res.status(500).json({ message: "Signup error.", error: error.message });
   }
