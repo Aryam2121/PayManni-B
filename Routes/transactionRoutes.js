@@ -1,12 +1,11 @@
-const express = require('express');
-const { rechargeAccount, getTransactions } = require("../Controllers/TransactionController.js");
-
+const express = require("express");
 const router = express.Router();
+const transactionController = require("../Controllers/TransactionController.js");
 
-// Recharge Route
-router.post("/recharge", rechargeAccount);
+// ✅ Recharge Account (Create Razorpay Order)
+router.post("/recharge", transactionController.rechargeAccount);
 
-// Get Transaction History
-router.get("/recharge/:userId/transactions", getTransactions);
+// ✅ Get User Transactions
+router.get("/transactions/:userId", transactionController.getTransactions);
 
-module.exports = router;  
+module.exports = router;

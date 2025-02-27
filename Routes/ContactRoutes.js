@@ -1,29 +1,15 @@
-const express = require('express');
-const { check } = require('express-validator');
+const express = require("express");
+const { getContacts, addContact, updateContact } = require("../Controllers/contactController.js");
+
 const router = express.Router();
 
-const paymentController = require('../Controllers/contactController');
+// 📌 Get all contacts
+router.get("/contacts", getContacts);
 
-// Get all contacts
-router.get('/contacts/get', paymentController.getContacts);
+// 📌 Add a new contact
+router.post("/contacts", addContact);
 
-// Add new contact
-router.post(
-  '/contacts/add',
-  [
-    check('name', 'Name is required').not().isEmpty(),
-    check('phone', 'Phone number is required').not().isEmpty(),
-  ],
-  paymentController.addContact
-);
-
-// Update contact (favorite/unfavorite)
-router.put('/contacts/:id', paymentController.updateContact);
-
-// Send money (create a transaction)
-router.post('/transactions/send', paymentController.sendMoney);
-
-// Get recent transactions
-router.get('/transactions/get', paymentController.getTransactions);
+// 📌 Update a contact (favorite/unfavorite)
+router.put("/contacts/:id", updateContact);
 
 module.exports = router;

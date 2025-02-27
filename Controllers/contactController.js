@@ -2,9 +2,11 @@ const Contact = require('../models/Contact');
 const Transaction = require('../models/Transaction');
 const { validationResult } = require('express-validator');
 const Razorpay = require('razorpay');
+const crypto = require('crypto');
+
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,  // Your Razorpay key ID
-  key_secret: process.env.RAZORPAY_KEY_SECRET  // Your Razorpay key secret
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
 // Get all contacts
@@ -22,7 +24,6 @@ exports.getContacts = async (req, res) => {
 exports.addContact = async (req, res) => {
   const { name, phone } = req.body;
 
-  // Validation
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -58,12 +59,12 @@ exports.updateContact = async (req, res) => {
   }
 };
 
-// Send money (create a transaction)
+// Step 1: Create Razorpay Order
 exports.sendMoney = async (req, res) => {
   const { userId, amount, paymentMethod, contacts } = req.body;
 
   if (!paymentMethod || !userId || !amount || !contacts) {
-    return res.status(400).json({ error: 'Missing required fields: paymentMethod, userId, amount, or contacts.' });
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
   if (isNaN(amount) || amount <= 0) {
@@ -76,42 +77,74 @@ exports.sendMoney = async (req, res) => {
       return res.status(404).json({ message: 'One or more contacts not found' });
     }
 
-    // Step 1: Create Razorpay Order
     const options = {
-      amount: amount * 100,  // Convert INR to paise
+      amount: amount * 100, // Convert INR to paise
       currency: 'INR',
       receipt: `txn_${Date.now()}`,
-      payment_capture: 1,  // Auto capture payment
+      payment_capture: 1, // Auto capture payment
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Step 2: Save Transaction in Database
+    // Save order details to track payment later
     const transaction = new Transaction({
       userId,
       amount,
       paymentMethod,
       contacts,
       razorpayOrderId: order.id,
+      status: "PENDING"
     });
 
     await transaction.save();
 
-    // Step 3: Send the payment link/order ID to the frontend
-    res.status(201).json({ success: true, orderId: order.id, amount: amount, currency: 'INR' });
+    res.status(201).json({ success: true, orderId: order.id, amount, currency: 'INR' });
   } catch (error) {
     console.error('Error processing transaction:', error);
     res.status(500).json({ message: 'Server error while processing the transaction.' });
   }
 };
+
+// Step 2: Verify Payment After Razorpay Callback
+exports.verifyPayment = async (req, res) => {
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
+
+  try {
+    const transaction = await Transaction.findOne({ razorpayOrderId: razorpay_order_id });
+
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    // Verify Razorpay signature
+    const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
+    const generatedSignature = hmac.digest("hex");
+
+    if (generatedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: "Invalid payment signature" });
+    }
+
+    // Update transaction status
+    transaction.status = "SUCCESS";
+    transaction.razorpayPaymentId = razorpay_payment_id;
+    await transaction.save();
+
+    res.status(200).json({ message: "Payment verified successfully", transaction });
+  } catch (error) {
+    console.error("Error verifying payment:", error);
+    res.status(500).json({ message: "Server error while verifying payment" });
+  }
+};
+
 // Get recent transactions
 exports.getTransactions = async (req, res) => {
   try {
     const transactions = await Transaction.find()
-      .populate('userId')     // Populate the userId field with User details
-      .populate('contacts');  // Populate the contacts field with Contact details
+      .populate('userId')
+      .populate('contacts');
 
-    if (!transactions || transactions.length === 0) {
+    if (!transactions.length) {
       return res.status(404).json({ message: 'No transactions found' });
     }
 
@@ -121,4 +154,3 @@ exports.getTransactions = async (req, res) => {
     res.status(500).json({ message: 'Server error while fetching transactions.' });
   }
 };
-

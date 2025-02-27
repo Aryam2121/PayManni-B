@@ -1,17 +1,97 @@
 const axios = require("axios");
 const Flight = require("../models/Flight");
 require("dotenv").config();  // Make sure to require dotenv
-
+const Razorpay = require('razorpay');
 const API_KEY = process.env.AVIATION_API_KEY;
 const BASE_URL = "http://api.aviationstack.com/v1/flights";
 
 // ✅ Fetch all flights from the database
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// ✅ Fetch all flights
 const getAllFlights = async (req, res) => {
   try {
     const flights = await Flight.find();
-    res.status(200).json(flights);
+    res.status(200).json({ success: true, flights });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching flights", error: error.message });
+    console.error("Error fetching flights:", error);
+    res.status(500).json({ success: false, message: "Error fetching flights", error: error.message });
+  }
+};
+
+// ✅ Create Razorpay Order
+const createOrder = async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    if (!amount || !currency) {
+      return res.status(400).json({ success: false, message: "Amount and currency are required" });
+    }
+
+    const options = {
+      amount: amount * 100, // Razorpay accepts amount in paisa
+      currency,
+      receipt: `order_${Math.random().toString(36).substring(7)}`,
+      payment_capture: 1, // Auto-capture payment
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.status(201).json({ success: true, order });
+  } catch (error) {
+    console.error("Error creating Razorpay order:", error);
+    res.status(500).json({ success: false, message: "Error creating order", error: error.message });
+  }
+};
+
+// ✅ Verify Razorpay Payment
+const verifyPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid payment data" });
+    }
+
+    const generated_signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Payment verification failed" });
+    }
+
+    res.status(200).json({ success: true, message: "Payment verified successfully" });
+  } catch (error) {
+    console.error("Error verifying payment:", error);
+    res.status(500).json({ success: false, message: "Error verifying payment", error: error.message });
+  }
+};
+const bookFlight = async (req, res) => {
+  try {
+    const { flightId, userId, paymentId } = req.body;
+
+    if (!flightId || !userId || !paymentId) {
+      return res.status(400).json({ success: false, message: "Flight ID, User ID, and Payment ID are required" });
+    }
+
+    const flight = await Flight.findById(flightId);
+    if (!flight) {
+      return res.status(404).json({ success: false, message: "Flight not found" });
+    }
+
+    // Mark the flight as booked
+    flight.bookedBy = userId;
+    flight.paymentId = paymentId;
+    await flight.save();
+
+    res.status(200).json({ success: true, message: "Flight booked successfully", flight });
+  } catch (error) {
+    console.error("Error booking flight:", error);
+    res.status(500).json({ success: false, message: "Error booking flight", error: error.message });
   }
 };
 
@@ -101,4 +181,4 @@ const getFlightDetails = async (req, res) => {
   }
 };
 
-module.exports = { getAllFlights, fetchAndStoreFlights, addFlight, addMultipleFlights, searchFlights, getFlightDetails };
+module.exports = { getAllFlights, fetchAndStoreFlights, addFlight, addMultipleFlights, searchFlights, getFlightDetails,createOrder, verifyPayment, bookFlight };

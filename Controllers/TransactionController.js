@@ -1,6 +1,13 @@
+const Razorpay = require("razorpay");
 const Transaction = require("../models/Transaction.js");
 
-// Recharge function
+// Initialize Razorpay
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// Recharge function with Razorpay
 const rechargeAccount = async (req, res) => {
   try {
     const { userId, amount, paymentMethod, promoCode } = req.body;
@@ -15,16 +22,33 @@ const rechargeAccount = async (req, res) => {
       finalAmount = finalAmount * 0.9;
     }
 
-    // Save transaction in DB
+    // Create Razorpay order
+    const options = {
+      amount: Math.round(finalAmount * 100), // Convert to paise
+      currency: "INR",
+      receipt: `recharge_${Date.now()}`,
+      payment_capture: 1, // Auto capture
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    // Save transaction in DB (Pending status)
     const transaction = new Transaction({
       userId,
       amount: finalAmount,
       paymentMethod,
       promoCode,
+      status: "Pending",
+      razorpayOrderId: order.id,
     });
 
     await transaction.save();
-    return res.status(201).json({ message: "Recharge successful", transaction });
+
+    return res.status(201).json({
+      message: "Order created successfully. Proceed to payment.",
+      order,
+      transaction,
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }

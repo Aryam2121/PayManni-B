@@ -1,20 +1,30 @@
 const express = require("express");
-const { 
-  searchFlights, 
-  getFlightDetails, 
-  addFlight, 
-  addMultipleFlights, 
-  getAllFlights, 
-  fetchAndStoreFlights  // ✅ API se flights fetch karne ka function add kiya
-} = require("../Controllers/flightController");
-
 const router = express.Router();
+const {
+  getAllFlights,
+  fetchAndStoreFlights,
+  addFlight,
+  addMultipleFlights,
+  searchFlights,
+  getFlightDetails,
+  createOrder,
+  verifyPayment,
+  bookFlight
+} = require("../Controllers/flightController.js");
 
-router.post("/search", searchFlights);
-router.get("/details/:id", getFlightDetails);
-router.post("/add", addFlight);
-router.post("/add-multiple", addMultipleFlights);
+// Flight-related routes
 router.get("/flights", getAllFlights);
-router.get("/fetch", fetchAndStoreFlights);  // ✅ New route added to fetch flights from API
+router.get("/flights/fetch", fetchAndStoreFlights);
+router.post("/flights", addFlight);
+router.post("/flights/multiple", addMultipleFlights);
+router.post("/flights/search", searchFlights);
+router.get("/flights/:id", getFlightDetails);
+
+// Payment-related routes
+router.post("/order", createOrder);
+router.post("/verify-payment", verifyPayment);
+
+// Booking route
+router.post("/book-flight", bookFlight);
 
 module.exports = router;

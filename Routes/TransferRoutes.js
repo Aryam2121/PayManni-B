@@ -1,10 +1,12 @@
 const express = require("express");
-const { createTransfer, getTransfers } = require("../Controllers/TransferController");
-const { authenticateUser } = require("../Middleware/authMiddleware"); // Changed authenticateUser → protect
-
 const router = express.Router();
+const transferController = require("../Controllers/transferController.js");
+const { authenticateUser } = require("../Middleware/authMiddleware.js"); // ✅ Destructure the function
 
-router.post("/transfer", authenticateUser, createTransfer);
-router.get("/history", authenticateUser, getTransfers);
+// ✅ Create a Transfer (with Razorpay)
+router.post("/transfer", authenticateUser, transferController.createTransfer); // ✅ Correct middleware usage
+
+// ✅ Get User Transfers
+router.get("/transfers", authenticateUser, transferController.getTransfers); // ✅ Correct middleware usage
 
 module.exports = router;

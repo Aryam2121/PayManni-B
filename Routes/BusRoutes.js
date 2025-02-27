@@ -1,11 +1,15 @@
 const express = require("express");
-const router = express.Router();
-const { getBuses, bookBus } = require("../Controllers/BusController");
+const { getBuses, createOrder, bookBus } = require("../Controllers/BusController.js");
 
-// Route to get the available buses
+const router = express.Router();
+
+// 📌 Get available buses
 router.get("/buses", getBuses);
 
-// Route to book a bus
-router.post("/book", bookBus);
+// 📌 Create a Razorpay order
+router.post("/payment/order", createOrder);
+
+// 📌 Book a bus after payment verification
+router.post("/booking", bookBus);
 
 module.exports = router;
