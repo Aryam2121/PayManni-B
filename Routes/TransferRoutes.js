@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const transferController = require("../Controllers/transferController.js");
+const transferController = require("../Controllers/TransferController.js");
 const { authenticateUser } = require("../Middleware/authMiddleware.js"); // ✅ Destructure the function
 
 // ✅ Create a Transfer (with Razorpay)
