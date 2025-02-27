@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const splitPaymentController = require("../Controllers/Split-PaymentController.js");
+const splitPaymentController = require("../Controllers/Split-paymentController.js");
 
 // ✅ Group Management
 router.post("/create-group", splitPaymentController.createGroup);
