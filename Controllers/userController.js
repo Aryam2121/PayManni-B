@@ -223,7 +223,7 @@ exports.signup = async (req, res) => {
         name,
         email,
         password: await bcrypt.hash(password, 10),
-        phoneNumber: phoneNumber || null,
+        phoneNumber: null,
       });
 
       await user.save();
@@ -281,13 +281,15 @@ exports.login = async (req, res) => {
   try {
     let user;
 
+    // 📌 Email & Password Login
     if (email && password) {
       user = await User.findOne({ email });
 
-      if (!user || !user.password) return res.status(404).json({ message: "User not found or password not set." });
+      if (!user) return res.status(404).json({ message: "User not found." });
 
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
+        // 📌 Generate OTP & Send it to Email (if password is wrong)
         const generatedOtp = generateOtp();
         user.otp = generatedOtp;
         user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
@@ -295,19 +297,39 @@ exports.login = async (req, res) => {
 
         await sendGridMail.send({
           to: email,
-          from: "your-email@example.com",
+          from: "aryamangupta2121@gmail.com",
           subject: "Your OTP for Login",
           text: `Your OTP is: ${generatedOtp}`,
         });
 
-        return res.status(401).json({ message: "Invalid password. OTP sent to your email.", otpRequired: true });
+        return res.status(401).json({ message: "Incorrect password. OTP sent to email.", otpRequired: true });
       }
+
     } else if (phoneNumber && otp) {
+      // 📌 Phone & OTP Login
       user = await User.findOne({ phoneNumber });
+
       if (!user || user.otp !== otp) return res.status(400).json({ message: "Invalid OTP." });
 
-      if (new Date(user.otpExpiry) < new Date()) return res.status(400).json({ message: "OTP expired." });
+      if (new Date(user.otpExpiry).getTime() < Date.now()) {
+        return res.status(400).json({ message: "OTP expired." });
+      }
 
+      // 🔹 Clear OTP after successful login
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save();
+    } else if (email && otp) {
+      // 📌 Email & OTP Login (Agar password bhul gaya ho)
+      user = await User.findOne({ email });
+
+      if (!user || user.otp !== otp) return res.status(400).json({ message: "Invalid OTP." });
+
+      if (new Date(user.otpExpiry).getTime() < Date.now()) {
+        return res.status(400).json({ message: "OTP expired." });
+      }
+
+      // 🔹 Clear OTP after successful login
       user.otp = null;
       user.otpExpiry = null;
       await user.save();
@@ -315,6 +337,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid login credentials." });
     }
 
+    // 📌 Generate JWT Token
     const token = jwt.sign({ id: user._id, name: user.name }, process.env.JWT_SECRET, { expiresIn: "1h" });
 
     res.status(200).json({
