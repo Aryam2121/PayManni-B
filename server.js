@@ -25,7 +25,7 @@ const trainroutes = require("./Routes/trainRoutes");
 const BusRoutes = require("./Routes/BusRoutes");
 const SplitPaymentRoutes = require("./Routes/Split-paymentRoutes");
 const TransferRoutes = require("./Routes/TransferRoutes");
-
+const TransContRoutes = require("./Routes/transContRoutes");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -136,7 +136,7 @@ app.use("/api", trainroutes);
 app.use("/api", BusRoutes);
 app.use("/api", SplitPaymentRoutes);
 app.use("/api", TransferRoutes);
-
+app.use("/api", TransContRoutes);
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
