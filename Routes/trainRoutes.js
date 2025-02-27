@@ -1,9 +1,11 @@
-// routes/trainRoutes.js
-const express = require('express');
-const { getTrains } = require('../Controllers/trainController');
-
+const express = require("express");
 const router = express.Router();
+const trainController = require("../Controllers/trainController.js");
 
-router.get('/get-trains', getTrains);  // Route for getting available trains based on query
+// ✅ Train Search Route
+router.get("/trains", trainController.getTrains);
+
+// ✅ Razorpay Payment Route
+router.post("/create-payment", trainController.createPayment);
 
 module.exports = router;

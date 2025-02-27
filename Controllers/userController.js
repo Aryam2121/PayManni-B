@@ -192,7 +192,7 @@ exports.sendOtp = async (req, res) => {
 };
 
 /**
- * 📌 User Signup
+ * 📌 User Signup (Email/Password or Phone/OTP)
  */
 exports.signup = async (req, res) => {
   const { name, email, phoneNumber, password, confirmPassword, otp } = req.body;
@@ -251,12 +251,12 @@ exports.googleAuth = async (req, res) => {
 
   try {
     const ticket = await googleClient.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
-    const { email, name, picture } = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = ticket.getPayload(); // Using `sub` for Google User ID
 
     let user = await User.findOne({ email });
 
     if (!user) {
-      user = new User({ name, email, googleId: ticket.getUserId(), profilePicture: picture, authMethod: "google" });
+      user = new User({ name, email, googleId, profilePicture: picture, authMethod: "google" });
       await user.save();
     }
 

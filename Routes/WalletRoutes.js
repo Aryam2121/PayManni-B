@@ -1,15 +1,18 @@
-// routes/walletRoutes.js
 const express = require("express");
 const router = express.Router();
-const walletController = require("../Controllers/WalletController.js");
+const walletController = require("../Controllers/walletController.js");
+const { authenticateUser } = require("../Middleware/authMiddleware.js");
 
-// Route for fetching wallet details
-router.get("/wallet", walletController.getWalletDetails);
+// ✅ Get wallet details (balance & transactions)
+router.get("/", authenticateUser, walletController.getWalletDetails);
 
-// Route for depositing money
-router.post("/deposit", walletController.depositMoney);
+// ✅ Deposit money via Razorpay
+router.post("/deposit", authenticateUser, walletController.depositMoney);
 
-// Route for withdrawing money
-router.post("/withdraw", walletController.withdrawMoney);
+// ✅ Confirm deposit via Razorpay Webhook (Webhook doesn't require authentication)
+router.post("/confirm-deposit", walletController.confirmDeposit);
+
+// ✅ Withdraw money
+router.post("/withdraw", authenticateUser, walletController.withdrawMoney);
 
 module.exports = router;

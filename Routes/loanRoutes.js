@@ -1,14 +1,31 @@
-const express = require('express');
+const express = require("express");
+const {
+  getAllLoans,
+  getLoanById,
+  applyLoan,
+  createLoanPaymentOrder,
+  verifyLoanPayment,
+  repayLoanEMI,
+} = require("../Controllers/loanController.js");
+
 const router = express.Router();
-const { getAllLoans, getLoanById, applyLoan } = require('../Controllers/loanController');
 
-// GET all loan applications
-router.get('/loans', getAllLoans);
+// ✅ GET all loan applications
+router.get("/loans", getAllLoans);
 
-// GET loan application by ID
-router.get('/loans/:id', getLoanById);
+// ✅ GET loan application by ID
+router.get("/loans/:id", getLoanById);
 
-// POST loan application (existing)
-router.post('/loans/apply', applyLoan);
+// ✅ Apply for a Loan
+router.post("/loans/apply", applyLoan);
+
+// ✅ Create Razorpay Order for EMI Payment
+router.post("/loans/payment/order", createLoanPaymentOrder);
+
+// ✅ Verify Razorpay Payment
+router.post("/loans/payment/verify", verifyLoanPayment);
+
+// ✅ Repay Loan EMI
+router.post("/loans/repay", repayLoanEMI);
 
 module.exports = router;
