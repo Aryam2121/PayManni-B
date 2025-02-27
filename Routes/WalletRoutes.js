@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const walletController = require("../Controllers/walletController.js");
+const walletController = require("../Controllers/WalletController.js");
 const { authenticateUser } = require("../Middleware/authMiddleware.js");
 
 // ✅ Get wallet details (balance & transactions)
