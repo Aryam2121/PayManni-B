@@ -18,9 +18,9 @@ const userSchema = new mongoose.Schema({
   phoneNumber: {
     type: String,
     unique: true,
-    sparse: true, // Optional for Google users
-    default: "",
+    sparse: true, // Allows multiple null values
   },
+  
   password: {
     type: String,
     select: false, // Don't return password in queries by default
