@@ -1,5 +1,6 @@
 const https = require('https');
 const Razorpay = require('razorpay');
+const crypto = require('crypto');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -75,5 +76,20 @@ const createPayment = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+// Razorpay Payment Verification
+const verifyPayment = (req, res) => {
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-module.exports = { getTrains, createPayment };
+  const generated_signature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest('hex');
+
+  if (generated_signature === razorpay_signature) {
+    res.status(200).json({ success: true, message: 'Payment Verified Successfully' });
+  } else {
+    res.status(400).json({ success: false, message: 'Payment Verification Failed' });
+  }
+};
+
+module.exports = { getTrains, createPayment, verifyPayment };
