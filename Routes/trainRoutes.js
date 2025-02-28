@@ -7,5 +7,6 @@ router.get("/trains", trainController.getTrains);
 
 // ✅ Razorpay Payment Route
 router.post("/create-payment", trainController.createPayment);
+router.post("/verify-payment", trainController.verifyPayment);
 
 module.exports = router;
