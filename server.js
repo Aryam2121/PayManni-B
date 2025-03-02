@@ -27,7 +27,7 @@ const SplitPaymentRoutes = require("./Routes/Split-paymentRoutes");
 const TransferRoutes = require("./Routes/TransferRoutes");
 const TransContRoutes = require("./Routes/transContRoutes");
 const clerkWebhook = require("./Routes/clerkWebhook");
-import billPaymentRoutes from "./Routes/billPaymentRoutes.js";
+const  billPaymentRoutes = require("./Routes/billPaymentRoutes.js");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,

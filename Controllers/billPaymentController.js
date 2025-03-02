@@ -1,7 +1,7 @@
-import BillPayment from "../models/BillPayment.js";
+const BillPayment = require("../models/BillPayment");
 
 // Create a new bill payment
-export const payBill = async (req, res) => {
+ const payBill = async (req, res) => {
   try {
     const { billType, amount, paymentMethod } = req.body;
 
@@ -24,7 +24,7 @@ export const payBill = async (req, res) => {
 };
 
 // Get all bill payments
-export const getAllPayments = async (req, res) => {
+ const getAllPayments = async (req, res) => {
   try {
     const payments = await BillPayment.find().sort({ paymentDate: -1 });
     res.status(200).json(payments);
@@ -34,7 +34,7 @@ export const getAllPayments = async (req, res) => {
 };
 
 // Get payment history by bill type
-export const getPaymentHistoryByBill = async (req, res) => {
+ const getPaymentHistoryByBill = async (req, res) => {
   try {
     const { billType } = req.params;
     const payments = await BillPayment.find({ billType }).sort({ paymentDate: -1 });
@@ -48,3 +48,4 @@ export const getPaymentHistoryByBill = async (req, res) => {
     res.status(500).json({ message: "Failed to retrieve history", error: error.message });
   }
 };
+module.exports = { payBill, getAllPayments, getPaymentHistoryByBill };
