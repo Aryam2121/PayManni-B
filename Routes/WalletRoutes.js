@@ -21,7 +21,7 @@ const router = express.Router();
 const walletController = require("../Controllers/WalletController.js");
 
 // ✅ Get wallet details (balance & transactions)
-router.get("/", walletController.getWalletDetails);
+router.get("/wallet", walletController.getWalletDetails);
 
 // ✅ Deposit money via Razorpay
 router.post("/deposit", walletController.depositMoney);
