@@ -28,6 +28,7 @@ const TransferRoutes = require("./Routes/TransferRoutes");
 const TransContRoutes = require("./Routes/transContRoutes");
 const clerkWebhook = require("./Routes/clerkWebhook");
 const  billPaymentRoutes = require("./Routes/billPaymentRoutes.js");
+const movieRoutes = require("./Routes/movieRoutes.js");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -141,6 +142,7 @@ app.use("/api", TransferRoutes);
 app.use("/api", TransContRoutes);
 app.use("/api", clerkWebhook);
 app.use("/api", billPaymentRoutes);
+app.use("/api", movieRoutes); // Movie routes
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
