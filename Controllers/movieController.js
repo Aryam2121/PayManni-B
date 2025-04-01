@@ -16,13 +16,14 @@ const createMovie = async (req, res) => {
   try {
     const { title, description, duration, price, seatsAvailable } = req.body;
 
-    // Check if image is provided in the request
+    // Check if image is provided
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No image provided",
-      });
+      return res.status(400).json({ success: false, message: "No image provided" });
     }
+
+    // Construct image URL (Cloudinary or local storage)
+    const imageUrl = req.file.path; // If using local storage
+    // const imageUrl = req.file.secure_url; // If using Cloudinary
 
     const newMovie = new Movie({
       title,
@@ -30,7 +31,7 @@ const createMovie = async (req, res) => {
       duration,
       price,
       seatsAvailable,
-      image: req.file.path, // Assuming the image path is stored here
+      image: imageUrl, // Save the image URL
     });
 
     await newMovie.save();
@@ -41,12 +42,10 @@ const createMovie = async (req, res) => {
       movie: newMovie,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 // Book movie
 const bookMovie = async (req, res) => {
