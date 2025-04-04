@@ -12,7 +12,7 @@ router.get("/getAllmovies", movieController.getMovies);
 // Book a movie
 router.post("/movies/book", movieController.bookMovie);
 // Get a single movie by ID
-router.get("/movies/:movieId", movieController.getMovieById);
+// router.get("/movies/:movieId", movieController.getMovieById);
 
 
 module.exports = router;
