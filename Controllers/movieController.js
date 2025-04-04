@@ -84,23 +84,23 @@ const bookMovie = async (req, res) => {
     res.status(500).json({ success: false, message: "Booking failed" });
   }
 };
-// const getMovieById = async (req, res) => {
-//   try {
-//     const { movieId } = req.params;
-//     const movie = await Movie.findById(movieId);
+const getMovieById = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const movie = await Movie.findById(movieId);
 
-//     if (!movie) {
-//       return res.status(404).json({ success: false, message: "Movie not found" });
-//     }
+    if (!movie) {
+      return res.status(404).json({ success: false, message: "Movie not found" });
+    }
 
-//     res.status(200).json({ success: true, movie });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: "Failed to fetch movie" });
-//   }
-// };
+    res.status(200).json({ success: true, movie });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch movie" });
+  }
+};
 module.exports = {
   getMovies,
   createMovie,
   bookMovie,
-  
+  getMovieById,
 };
