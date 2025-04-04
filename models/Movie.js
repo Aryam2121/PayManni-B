@@ -8,6 +8,7 @@ const MovieBookingSchema = new mongoose.Schema({
   duration: { type: Number, required: true },  // Movie duration in minutes
   price: { type: Number, required: true },
   seatsAvailable: { type: Number, required: true }, // Number of available seats
+  image: { type: String },
   bookings: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },  // Reference to User model
