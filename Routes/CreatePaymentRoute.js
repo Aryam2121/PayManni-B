@@ -6,5 +6,4 @@ const router = express.Router();
 
 // Route to handle payment creation
 router.post('/payment/create-link', createPaymentController);
-
 module.exports = router;
