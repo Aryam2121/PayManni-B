@@ -1,14 +1,15 @@
-// POST /api/payment/create-link
 const Razorpay = require("razorpay");
-
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
- const createPaymentLink = async (req, res) => {
+const createPaymentLink = async (req, res) => {
   const { amount, movieId, userId, selectedSeats } = req.body;
+
+  console.log("Received Payment Request:", req.body);
+  console.log("Using Razorpay Key:", process.env.RAZORPAY_KEY_ID);
 
   try {
     const result = await razorpay.paymentLink.create({
@@ -18,8 +19,8 @@ const razorpay = new Razorpay({
       description: `Movie Booking for ${selectedSeats.join(", ")}`,
       customer: {
         name: "Aryaman Gupta",
-        contact: "+91 7579 677 966",
-        email: "aryamangupta2121@gmail.com",
+        contact: "9123456789",
+        email: "customer@example.com",
       },
       notify: {
         email: true,
@@ -31,10 +32,14 @@ const razorpay = new Razorpay({
 
     res.json(result);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to create payment link" });
+    console.error("Razorpay Error:", error);
+    res.status(500).json({
+      message: "Failed to create payment link",
+      error: error?.message || "Unknown error",
+    });
   }
 };
+
 module.exports = {
   createPaymentLink,
 };
