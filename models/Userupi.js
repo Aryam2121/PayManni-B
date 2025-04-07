@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   password: { type: String }, 
   balance: { type: Number, default: 0 },
-  upiId: { type: String, unique: true, sparse: true }, // e.g., john@paymanni
+  upiId: { type: String, unique: true, sparse: true } // e.g., john@paymanni
 });
 
 const Userupi = mongoose.model('Userupi', userSchema);
