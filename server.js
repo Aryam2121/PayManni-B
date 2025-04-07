@@ -30,6 +30,7 @@ const clerkWebhook = require("./Routes/clerkWebhook");
 const  billPaymentRoutes = require("./Routes/billPaymentRoutes.js");
 const movieRoutes = require("./Routes/movieRoutes.js");
 const createPaymentRoute = require("./Routes/CreatePaymentRoute.js");
+const upiRoutes = require("./Routes/upiRoutes.js");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -145,6 +146,7 @@ app.use("/api", clerkWebhook);
 app.use("/api", billPaymentRoutes);
 app.use("/api", movieRoutes); // Movie routes
 app.use("/api", createPaymentRoute); // Payment routes
+app.use("/api", upiRoutes);
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
