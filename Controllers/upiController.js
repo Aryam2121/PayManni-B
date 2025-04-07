@@ -2,25 +2,26 @@ const Userupi = require('../models/Userupi');
 
 // Generate UPI ID
 const generateUpiId = async (req, res) => {
-  const { userId, upiUsername } = req.body;
-  const upiId = `${upiUsername}@paymanni`;
-
-  try {
-    const user = await Userupi.findById(userId);
-    if (!user) return res.status(404).json({ msg: "User not found" });
-
-    // Check if UPI ID is taken
-    const existing = await Userupi.findOne({ upiId });
-    if (existing) return res.status(400).json({ msg: "UPI ID already in use" });
-
-    user.upiId = upiId;
-    await user.save();
-
-    res.json({ msg: "UPI ID created", upiId });
-  } catch (err) {
-    res.status(500).json({ msg: "Server error", err });
-  }
-};
+    const { username, upiUsername } = req.body;
+    const upiId = `${upiUsername}@paymanni`;
+  
+    try {
+      const user = await Userupi.findOne({ username });
+      if (!user) return res.status(404).json({ msg: "User not found" });
+  
+      // Check if UPI ID already exists
+      const existing = await Userupi.findOne({ upiId });
+      if (existing) return res.status(400).json({ msg: "UPI ID already in use" });
+  
+      user.upiId = upiId;
+      await user.save();
+  
+      res.json({ msg: "UPI ID created successfully", upiId });
+    } catch (err) {
+      res.status(500).json({ msg: "Server error", err });
+    }
+  };
+  
 
 // Simulate Sending Money
 const sendMoney = async (req, res) => {
