@@ -32,6 +32,7 @@ const movieRoutes = require("./Routes/movieRoutes.js");
 const createPaymentRoute = require("./Routes/CreatePaymentRoute.js");
 const upiRoutes = require("./Routes/upiRoutes.js");
 const RegisteredUserUpiRoute = require("./Routes/RegisteredUserUpiRoute.js");
+const BankRoutes = require("./Routes/bankRoutes.js");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -149,6 +150,7 @@ app.use("/api", movieRoutes); // Movie routes
 app.use("/api", createPaymentRoute); // Payment routes
 app.use("/api", upiRoutes);
 app.use("/api", RegisteredUserUpiRoute); // UPI routes
+app.use("/api", BankRoutes); // Bank routes
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
