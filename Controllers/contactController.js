@@ -126,18 +126,3 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-// Optional: Handle if someone tries to get transactions (not implemented)
-exports.getTransactions = async (req, res) => {
-  res.status(200).json({ message: "Transaction history feature not available." });
-};
-exports.getContacts = async (req, res) => {
-  const { userId } = req.query; // or from req.user if using auth
-
-  try {
-    const contacts = await Contact.find({ userId });
-    res.status(200).json(contacts);
-  } catch (error) {
-    console.error('Error fetching contacts:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};

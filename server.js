@@ -25,7 +25,6 @@ const trainroutes = require("./Routes/trainRoutes");
 const BusRoutes = require("./Routes/BusRoutes");
 const SplitPaymentRoutes = require("./Routes/Split-paymentRoutes");
 const TransferRoutes = require("./Routes/TransferRoutes");
-const TransContRoutes = require("./Routes/transContRoutes");
 const clerkWebhook = require("./Routes/clerkWebhook");
 const  billPaymentRoutes = require("./Routes/billPaymentRoutes.js");
 const movieRoutes = require("./Routes/movieRoutes.js");
@@ -144,7 +143,6 @@ app.use("/api", trainroutes);
 app.use("/api", BusRoutes);
 app.use("/api", SplitPaymentRoutes);
 app.use("/api", TransferRoutes);
-app.use("/api", TransContRoutes);
 app.use("/api", clerkWebhook);
 app.use("/api", billPaymentRoutes);
 app.use("/api", movieRoutes); // Movie routes
