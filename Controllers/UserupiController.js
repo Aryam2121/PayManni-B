@@ -82,5 +82,26 @@ const loginUser = async (req, res) => {
     res.status(500).json({ msg: "Server error", err });
   }
 };
+const editUserProfile = async (req, res) => {
+  const { userId } = req.params;
+  const updates = req.body;
 
-module.exports = { registerUser, getUserBankData,getUserById, loginUser};
+  try {
+    const updatedUser = await Userupi.findByIdAndUpdate(userId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    res.status(200).json({
+      msg: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+module.exports = { registerUser, getUserBankData,getUserById, loginUser,editUserProfile};
