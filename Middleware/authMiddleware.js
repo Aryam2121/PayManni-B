@@ -11,10 +11,11 @@ const authenticateUser = async (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded Token:", decoded);
-      console.log("Decoded ID:", decoded.id || decoded._id);
-      req.user = await Userupi.findById(decoded.id || decoded._id).select("-password");
-      
+
+      req.user = await Userupi.findById(decoded.userId).select("-password");
+
       if (!req.user) {
+        console.log("❌ User not found for ID:", decoded.userId);
         return res.status(401).json({ message: "User not found" });
       }
 
