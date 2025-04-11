@@ -1,5 +1,5 @@
 const express = require("express");
-const { getBankInfo, addLinkedAccount, addTransaction } = require('../Controllers/bankController.js');
+const { getBankInfo, addLinkedAccount, addTransaction,getMyAccountDetails } = require('../Controllers/bankController.js');
 const router = express.Router();
 
 // GET banking data for a user
@@ -10,5 +10,5 @@ router.post('/:userId/account', addLinkedAccount);
 
 // POST add transaction
 router.post('/:userId/transaction', addTransaction);
-
+router.get("/myaccount/:userId", getMyAccountDetails);
 module.exports = router;
