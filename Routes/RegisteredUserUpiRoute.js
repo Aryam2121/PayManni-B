@@ -2,10 +2,11 @@ const express = require("express");
 const router = express.Router();
 const { registerUser, getUserById,
     getUserBankData,
-    loginUser} = require("../Controllers/UserupiController");
+    loginUser,editUserProfile} = require("../Controllers/UserupiController");
 
     router.post("/register", registerUser);
     router.post("/login", loginUser);
+    router.post("/edituser",editUserProfile);
     
     // 👇 More specific route FIRST
     router.get('/:userId/bank-data', getUserBankData);
