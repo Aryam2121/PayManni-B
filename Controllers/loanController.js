@@ -9,20 +9,20 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// ✅ GET all loan applications
+// ✅ Get all loans for a specific user (based on logged-in user)
 const getAllLoans = async (req, res) => {
   try {
-    const loans = await Loan.find();
+    const loans = await Loan.find({ userId: req.user.id }); // Only logged-in user's loans
     res.status(200).json({ success: true, loans });
   } catch (err) {
     res.status(500).json({ success: false, message: "Server error", error: err });
   }
 };
 
-// ✅ GET loan application by ID
+// ✅ Get loan by ID
 const getLoanById = async (req, res) => {
   try {
-    const loan = await Loan.findById(req.params.id);
+    const loan = await Loan.findById(req.params.id).populate("userId");
     if (!loan) {
       return res.status(404).json({ success: false, message: "Loan application not found" });
     }
@@ -32,31 +32,32 @@ const getLoanById = async (req, res) => {
   }
 };
 
-// ✅ Apply for a Loan
+// ✅ Apply for a loan
 const applyLoan = async (req, res) => {
   const { amount, term } = req.body;
 
   if (parseFloat(amount) < 100 || parseFloat(amount) > 700000000) {
-    return res.status(400).json({ success: false, message: "Loan amount must be between $100 and $1000." });
+    return res.status(400).json({ success: false, message: "Loan amount must be between ₹100 and ₹700,000,000." });
   }
   if (parseInt(term) < 3 || parseInt(term) > 24) {
     return res.status(400).json({ success: false, message: "Loan term must be between 3 and 24 months." });
   }
 
-  const interestRate = amount >= 100 && amount <= 500 ? 5 : 7;
+  const interestRate = amount <= 500 ? 5 : 7;
   const rate = interestRate / 100 / 12;
   const emi = (parseFloat(amount) * rate) / (1 - Math.pow(1 + rate, -parseInt(term)));
-
   const approvalRate = Math.min(95, Math.max(30, 100 - parseFloat(amount) / 10));
   const approvalChance = `${approvalRate}% chance of approval`;
 
   const newLoan = new Loan({
+    userId: req.user.id, // ✅ User reference (Userupi)
     amount,
     term,
     interestRate,
     monthlyEMI: emi.toFixed(2),
     approvalChance,
-    status: "✅ Loan Approved!",
+    status: "success",
+    type: "loan",
   });
 
   try {
@@ -67,7 +68,7 @@ const applyLoan = async (req, res) => {
   }
 };
 
-// ✅ Create Razorpay Order for EMI Payment
+// ✅ Create Razorpay order for EMI
 const createLoanPaymentOrder = async (req, res) => {
   try {
     const { loanId, amount } = req.body;
@@ -82,16 +83,15 @@ const createLoanPaymentOrder = async (req, res) => {
     }
 
     const options = {
-      amount: amount * 100, // Razorpay requires amount in paise
+      amount: amount * 100,
       currency: "INR",
       receipt: `loan_${loanId}_${Date.now()}`,
-      payment_capture: 1, // Auto-capture payment
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
     res.status(201).json({ success: true, order });
   } catch (error) {
-    console.error("Error creating Razorpay order:", error);
     res.status(500).json({ success: false, message: "Error creating order", error: error.message });
   }
 };
@@ -100,10 +100,6 @@ const createLoanPaymentOrder = async (req, res) => {
 const verifyLoanPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid payment data" });
-    }
 
     const generated_signature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -116,7 +112,6 @@ const verifyLoanPayment = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Payment verified successfully" });
   } catch (error) {
-    console.error("Error verifying payment:", error);
     res.status(500).json({ success: false, message: "Error verifying payment", error: error.message });
   }
 };
@@ -124,10 +119,10 @@ const verifyLoanPayment = async (req, res) => {
 // ✅ Repay Loan EMI
 const repayLoanEMI = async (req, res) => {
   try {
-    const { loanId, paymentId } = req.body;
+    const { loanId, paymentId, amount, userUpi } = req.body;
 
-    if (!loanId || !paymentId) {
-      return res.status(400).json({ success: false, message: "Loan ID and Payment ID are required" });
+    if (!loanId || !paymentId || !amount || !userUpi) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
     const loan = await Loan.findById(loanId);
@@ -135,14 +130,19 @@ const repayLoanEMI = async (req, res) => {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
-    // Update the loan status with payment details
-    loan.payments.push({ paymentId, date: new Date() });
-    await loan.save();
+    loan.payments.push({
+      paymentId,
+      amount,
+      userUpi,
+      date: new Date(),
+      status: "success",
+      type: "emi-payment",
+    });
 
-    res.status(200).json({ success: true, message: "Loan EMI payment recorded successfully", loan });
+    await loan.save();
+    res.status(200).json({ success: true, message: "EMI payment recorded", loan });
   } catch (error) {
-    console.error("Error processing loan repayment:", error);
-    res.status(500).json({ success: false, message: "Error processing loan repayment", error: error.message });
+    res.status(500).json({ success: false, message: "Error processing repayment", error: error.message });
   }
 };
 

@@ -1,5 +1,6 @@
 const Razorpay = require("razorpay");
-const Transaction = require("../models/Transaction.js");
+const Recharge = require("../models/Recharge.js");
+const WalletTransaction = require("../models/WalletTransaction.js");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -12,11 +13,12 @@ const rechargeAccount = async (req, res) => {
   try {
     const { userId, amount, paymentMethod, promoCode } = req.body;
 
-    if (!userId || !amount || amount <= 0) {
+    // Input validation
+    if (!userId || !amount || isNaN(amount) || amount <= 0) {
       return res.status(400).json({ message: "Invalid input values" });
     }
 
-    // Promo code discount logic
+    // Promo code logic
     let finalAmount = parseFloat(amount);
     if (promoCode?.toLowerCase() === "discount10") {
       finalAmount = finalAmount * 0.9;
@@ -24,50 +26,62 @@ const rechargeAccount = async (req, res) => {
 
     // Create Razorpay order
     const options = {
-      amount: Math.round(finalAmount * 100), // Convert to paise
+      amount: Math.round(finalAmount * 100),
       currency: "INR",
       receipt: `recharge_${Date.now()}`,
-      payment_capture: 1, // Auto capture
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Save transaction in DB (Pending status)
-    const transaction = new Transaction({
+    // Save recharge in DB (Pending)
+    const recharge = new Recharge({
       userId,
       amount: finalAmount,
       paymentMethod,
       promoCode,
       status: "Pending",
       razorpayOrderId: order.id,
+      rechargeDate: new Date(),
     });
 
-    await transaction.save();
+    await recharge.save();
+
+    // 🔥 Log as WalletTransaction (Recharge initiated)
+    await WalletTransaction.create({
+      user: userId,
+      amount: finalAmount,
+      type: "Recharge",
+      description: `Recharge initiated${promoCode ? ` with promo ${promoCode}` : ""}`,
+    });
 
     return res.status(201).json({
       message: "Order created successfully. Proceed to payment.",
       order,
-      transaction,
+      recharge,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Recharge error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Fetch transactions for a user
-const getTransactions = async (req, res) => {
+// Fetch recharges by user
+const getRecharges = async (req, res) => {
   try {
     const { userId } = req.params;
+
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const transactions = await Transaction.find({ userId }).sort({ transactionDate: -1 });
-    return res.status(200).json(transactions);
+    const recharges = await Recharge.find({ userId }).sort({ rechargeDate: -1 });
+
+    res.status(200).json(recharges);
   } catch (error) {
-    res.status(500).json({ message: "Server error", error });
+    console.error("Fetch recharges error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// Export using module.exports
-module.exports = { rechargeAccount, getTransactions };
+module.exports = { rechargeAccount, getRecharges };

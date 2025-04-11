@@ -1,19 +1,22 @@
 const BillPayment = require("../models/BillPayment");
 
 // Create a new bill payment
- const payBill = async (req, res) => {
+const payBill = async (req, res) => {
   try {
-    const { billType, amount, paymentMethod } = req.body;
+    const { billType, amount, paymentMethod, userId, userUpi } = req.body;
 
-    if (!billType || !amount || !paymentMethod) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!billType || !amount || !paymentMethod || !userId || !userUpi) {
+      return res.status(400).json({ message: "All fields are required including userId and userUpi" });
     }
 
     const newPayment = new BillPayment({
+      userId,
+      userUpi,
       billType,
       amount,
       paymentMethod,
-      status: "success", // Assuming all payments succeed for now
+      status: "success", // Simulated for now
+      typeTag: "bill",   // So getAllTransaction can filter it
     });
 
     await newPayment.save();
@@ -22,16 +25,20 @@ const BillPayment = require("../models/BillPayment");
     res.status(500).json({ message: "Payment failed", error: error.message });
   }
 };
-
 // Get all bill payments
- const getAllPayments = async (req, res) => {
+const getAllPayments = async (req, res) => {
   try {
-    const payments = await BillPayment.find().sort({ paymentDate: -1 });
+    const { userId } = req.query;
+
+    const query = userId ? { userId } : {};
+    const payments = await BillPayment.find(query).sort({ paymentDate: -1 });
+
     res.status(200).json(payments);
   } catch (error) {
     res.status(500).json({ message: "Failed to retrieve payments", error: error.message });
   }
 };
+
 
 // Get payment history by bill type
  const getPaymentHistoryByBill = async (req, res) => {

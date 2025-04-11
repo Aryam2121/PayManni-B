@@ -1,5 +1,7 @@
-const Wallet = require("../models/Wallet.js");
+const Wallet = require("../models/Wallet");
+const WalletTransaction = require("../models/WalletTransaction");
 const Razorpay = require("razorpay");
+const crypto = require("crypto");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -7,13 +9,26 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Get wallet details (balance and transactions)
-const getWalletDetails = (req, res) => {
-  const walletData = Wallet.getWallet();
-  res.json(walletData);
+// 🟡 Get wallet details (balance only)
+const getWalletDetails = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const wallet = await Wallet.findOne({ userId });
+
+    if (!wallet) return res.status(404).json({ message: "Wallet not found" });
+
+    const transactions = await WalletTransaction.find({ user: userId }).sort({ createdAt: -1 });
+
+    res.json({
+      balance: wallet.balance,
+      transactions,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
 };
 
-// Handle deposit via Razorpay
+// 🟡 Deposit Money (initiate Razorpay)
 const depositMoney = async (req, res) => {
   try {
     const { amount } = req.body;
@@ -21,16 +36,15 @@ const depositMoney = async (req, res) => {
       return res.status(400).json({ message: "Invalid deposit amount" });
     }
 
-    // Create Razorpay order
     const options = {
-      amount: Math.round(amount * 100), // Convert to paise
+      amount: Math.round(amount * 100),
       currency: "INR",
       receipt: `wallet_deposit_${Date.now()}`,
-      payment_capture: 1, // Auto-capture payment
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
-    
+
     return res.status(201).json({
       message: "Payment initiated. Proceed to Razorpay checkout.",
       order,
@@ -40,44 +54,76 @@ const depositMoney = async (req, res) => {
   }
 };
 
-// Handle deposit confirmation via Razorpay Webhook
-const confirmDeposit = (req, res) => {
+// 🟡 Confirm Deposit (via webhook)
+const confirmDeposit = async (req, res) => {
   try {
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, amount } = req.body;
+    const userId = req.user.id;
 
-    // Verify Razorpay signature (implementation required)
+    // Validate Razorpay Signature
     const isValid = verifyRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
     if (!isValid) {
       return res.status(400).json({ message: "Payment verification failed" });
     }
 
-    Wallet.updateBalance(amount);
-    Wallet.addTransaction(amount, "Deposit");
-    
-    return res.json({ message: "Deposit successful", balance: Wallet.getWallet().balance });
+    // Update balance
+    const wallet = await Wallet.findOneAndUpdate(
+      { userId },
+      { $inc: { balance: amount } },
+      { new: true, upsert: true }
+    );
+
+    // Create transaction
+    await WalletTransaction.create({
+      user: userId,
+      amount,
+      type: "Deposit",
+      description: "Wallet Deposit via Razorpay",
+    });
+
+    return res.json({ message: "Deposit successful", balance: wallet.balance });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Handle withdrawal
-const withdrawMoney = (req, res) => {
-  const { amount } = req.body;
-  if (!amount || amount <= 0) {
-    return res.status(400).json({ message: "Invalid withdrawal amount" });
-  }
-  if (amount <= Wallet.getWallet().balance) {
-    Wallet.updateBalance(-amount);
-    Wallet.addTransaction(amount, "Withdraw");
-    res.json({ balance: Wallet.getWallet().balance });
-  } else {
-    res.status(400).json({ message: "Insufficient balance" });
+// 🟡 Withdraw Money
+const withdrawMoney = async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const userId = req.user.id;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid withdrawal amount" });
+    }
+
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) return res.status(404).json({ message: "Wallet not found" });
+
+    if (amount > wallet.balance) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    // Deduct balance
+    wallet.balance -= amount;
+    await wallet.save();
+
+    // Create transaction
+    await WalletTransaction.create({
+      user: userId,
+      amount,
+      type: "Withdraw",
+      description: "Wallet Withdrawal",
+    });
+
+    res.json({ message: "Withdrawal successful", balance: wallet.balance });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
   }
 };
 
-// Razorpay Signature Verification (Implement this properly)
+// 🟡 Razorpay Signature Verifier
 const verifyRazorpaySignature = (orderId, paymentId, signature) => {
-  const crypto = require("crypto");
   const secret = process.env.RAZORPAY_KEY_SECRET;
   const hmac = crypto.createHmac("sha256", secret);
   hmac.update(`${orderId}|${paymentId}`);
@@ -90,6 +136,8 @@ module.exports = {
   confirmDeposit,
   withdrawMoney,
 };
+
+
 // const Wallet = require("../models/Wallet.js");
 // const Razorpay = require("razorpay");
 // const crypto = require("crypto");

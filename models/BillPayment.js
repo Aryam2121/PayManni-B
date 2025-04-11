@@ -2,6 +2,15 @@ const mongoose = require("mongoose");
 
 const BillPaymentSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Userupi",
+      required: true,
+    },
+    userUpi: {
+      type: String,
+      required: true,
+    },
     billType: {
       type: String,
       required: true,
@@ -36,6 +45,10 @@ const BillPaymentSchema = new mongoose.Schema(
     paymentDate: {
       type: Date,
       default: Date.now,
+    },
+    typeTag: {
+      type: String,
+      default: "bill",
     },
   },
   { timestamps: true }
