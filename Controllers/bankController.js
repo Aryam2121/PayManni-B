@@ -1,5 +1,6 @@
 const Bank = require("../models/Bank.js"); // Assuming you have a Bank model defined in models/Bank.js
 // 🔹 GET Bank Info by User ID
+const Userupi = require("../models/Userupi.js"); // Assuming you have a Userupi model defined in models/Userupi.js
 const getBankInfo = async (req, res) => {
   try {
     const bankInfo = await Bank.findOne({ user: req.params.userId });
