@@ -9,7 +9,7 @@ const razorpay = new Razorpay({
 });
 
 // Get all contacts
-exports.getAllContacts = async (req, res) => {
+exports.getContacts = async (req, res) => {
   try {
     const contacts = await Contact.find();
     res.status(200).json(contacts);
