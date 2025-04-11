@@ -1,4 +1,6 @@
 const Userupi = require("../models/Userupi");
+const jwt = require("jsonwebtoken");
+const JWT_SECRET = process.env.JWT_SECRET;
 const getUserById = async (req, res) => {
   const { userId } = req.params;
 
@@ -67,9 +69,13 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ msg: "Invalid credentials" });
     }
 
+    // ✅ Token generation
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+
     res.status(200).json({ 
       msg: "Login successful", 
-      userId: user._id, // <-- this is what you use in frontend
+      token,        
+      userId: user._id,
       user
     });
   } catch (err) {

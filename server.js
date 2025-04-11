@@ -7,7 +7,7 @@ const passport = require("passport");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 
-dotenv.config();
+require('dotenv').config();
 
 const app = express();
 
