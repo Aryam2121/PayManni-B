@@ -9,7 +9,7 @@ router.post("/add-user", splitPaymentController.addUserToGroup);
 router.post("/remove-user", splitPaymentController.removeUserFromGroup);
 router.post("/update-payment", splitPaymentController.updateUserPayment);
 router.post("/split-payment", splitPaymentController.splitPayment);
-
+router.get("/getallgroupstransactions", splitPaymentController.getAllGroupTransactions);
 // ✅ Payment Processing
 router.post("/create-order", splitPaymentController.createPaymentOrder);
 router.post("/verify-payment", splitPaymentController.verifyPayment);

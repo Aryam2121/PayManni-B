@@ -18,7 +18,7 @@ require("./config/passport");
 const userRoutes = require("./Routes/userRoutes");
 const WalletRoutes = require("./Routes/WalletRoutes");
 const contactRoutes = require("./Routes/ContactRoutes");
-const transactionRoutes = require("./Routes/transactionRoutes");
+const RechargeRoutes = require("./Routes/RechargeRoutes");
 const loanRoutes = require("./Routes/loanRoutes");
 const flightRoutes = require("./Routes/flightRoutes");
 const trainroutes = require("./Routes/trainRoutes");
@@ -33,6 +33,7 @@ const createPaymentRoute = require("./Routes/CreatePaymentRoute.js");
 const upiRoutes = require("./Routes/upiRoutes.js");
 const RegisteredUserUpiRoute = require("./Routes/RegisteredUserUpiRoute.js");
 const BankRoutes = require("./Routes/bankRoutes.js");
+const unifiedTransactionRoutes = require("./Routes/unifiedTransactionRoute.js");
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -137,7 +138,7 @@ app.use("/api", loanRoutes);
 app.use("/api/auth", userRoutes);
 app.use("/api", WalletRoutes);
 app.use("/api", contactRoutes);
-app.use("/api", transactionRoutes);
+app.use("/api", RechargeRoutes);
 app.use("/api", flightRoutes);
 app.use("/api", trainroutes);
 app.use("/api", BusRoutes);
@@ -151,6 +152,7 @@ app.use("/api", createPaymentRoute); // Payment routes
 app.use("/api", upiRoutes);
 app.use("/api", RegisteredUserUpiRoute); // UPI routes
 app.use("/api", BankRoutes); // Bank routes
+app.use("/api", unifiedTransactionRoutes); // Unified transaction routes
 // 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

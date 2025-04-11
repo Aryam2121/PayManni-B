@@ -1,4 +1,4 @@
-const Group = require("../models/Split-payment.js");
+const Group = require("../models/Group");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 require("dotenv").config();
@@ -13,17 +13,26 @@ const razorpay = new Razorpay({
 exports.createGroup = async (req, res) => {
   try {
     const { name, totalAmount } = req.body;
-    if (!name || !totalAmount) {
-      return res.status(400).json({ message: "Name and amount are required." });
+    const userId = req.user?._id; // assuming you're using auth middleware that adds user to req
+
+    if (!name || !totalAmount || !userId) {
+      return res.status(400).json({ message: "Name, amount and userId are required." });
     }
 
-    const newGroup = new Group({ name, members: [], totalAmount });
+    const newGroup = new Group({
+      name,
+      totalAmount,
+      createdBy: userId,
+      members: [],
+    });
+
     await newGroup.save();
     res.status(201).json(newGroup);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✅ Get all groups
 exports.getGroups = async (req, res) => {
@@ -169,5 +178,15 @@ exports.verifyPayment = async (req, res) => {
   } catch (error) {
     console.error("Error verifying payment:", error);
     res.status(500).json({ message: "Error verifying payment", error: error.message });
+  }
+};
+exports.getAllGroupTransactions = async (req, res) => {
+  try {
+    const userId = req.user?._id; // From JWT token
+
+    const groupTransactions = await Group.find({ createdBy: userId }).sort({ createdAt: -1 });
+    res.status(200).json(groupTransactions);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

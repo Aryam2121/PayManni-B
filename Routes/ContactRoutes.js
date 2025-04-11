@@ -1,10 +1,11 @@
 const express = require("express");
-const { getContacts, addContact, updateContact } = require("../Controllers/contactController.js");
+const { getAllContacts, addContact, updateContact,getContacts } = require("../Controllers/contactController.js");
 
 const router = express.Router();
 
 // 📌 Get all contacts
-router.get("/contacts", getContacts);
+router.get("/contacts", getAllContacts);
+router.get("/contacts/:userId", getContacts);
 
 // 📌 Add a new contact
 router.post("/contacts", addContact);

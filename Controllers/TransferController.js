@@ -1,10 +1,11 @@
 const mongoose = require("mongoose");
 const Razorpay = require("razorpay");
 const Transfer = require("../models/Transfer");
-const User = require("../models/User");
+const Userupi = require("../models/Userupi");
 const Payment = require("../models/Payment");
 const bcrypt = require("bcryptjs");
 const Logger = require("../utils/logger");
+const WalletTransaction = require("../models/WalletTransaction");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -31,8 +32,8 @@ const createTransfer = async (req, res) => {
       return res.status(400).json({ message: "Invalid recipient or amount" });
     }
 
-    const user = await User.findById(req.user.userId).session(session);
-    const recipientUser = await User.findOne({ username: recipient }).session(session);
+    const user = await Userupi.findById(req.user.userId).session(session);
+    const recipientUser = await Userupi.findOne({ username: recipient }).session(session);
 
     if (!user || !recipientUser) {
       await session.abortTransaction();
@@ -48,12 +49,18 @@ const createTransfer = async (req, res) => {
 
     let paymentStatus = "pending";
     let paymentData = {
-      userId: user._id,
-      recipient: recipientUser._id,
-      amount,
-      paymentMethod,
-      status: paymentStatus,
+      userId: user._id,                            // 🔗 Reference to user
+      recipient: recipientUser.username,          // 🧾 Display name or UPI of recipient
+      amount,                                     // 💸 Amount transferred
+      paymentMethod,                              // 💳 "card", "paypal", "upi"
+      status: paymentStatus,                      // ✅ "pending", "success", etc.
+      
+      // 🌐 Transaction listing support
+      type: "payment",                            // 🚩 For filtering in transaction history
+      userUpi: user.username || user.upiId,       // 🧾 To show who paid
+      razorpayOrderId: null,                      // 🧾 Set later after Razorpay order creation
     };
+    
 
     if (paymentMethod === "card") {
       if (!cardDetails || !validateCard(cardDetails)) {
@@ -77,19 +84,29 @@ const createTransfer = async (req, res) => {
       return res.status(400).json({ message: "Invalid UPI ID format" });
     }
 
-    // Razorpay Payment Processing
+    // Razorpay Order Creation
     const options = {
-      amount: Math.round(amount * 100), // Convert to paise
+      amount: Math.round(amount * 100),
       currency: "INR",
       receipt: `transfer_${Date.now()}`,
-      payment_capture: 1, // Auto capture
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
     paymentData.razorpayOrderId = order.id;
 
+    // Save Payment
     const newPayment = new Payment(paymentData);
     await newPayment.save({ session });
+    
+
+    // Log Wallet Transaction
+    await WalletTransaction.create([{
+      user: user._id,
+      amount,
+      type: "Transfer",
+      description: `Transferred to ${recipientUser.username} via ${paymentMethod}`,
+    }], { session });
 
     await session.commitTransaction();
     session.endSession();
@@ -121,5 +138,4 @@ const getTransfers = async (req, res) => {
   }
 };
 
-// Export module
 module.exports = { createTransfer, getTransfers };

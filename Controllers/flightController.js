@@ -4,6 +4,7 @@ require("dotenv").config();  // Make sure to require dotenv
 const Razorpay = require('razorpay');
 const API_KEY = process.env.AVIATION_API_KEY;
 const BASE_URL = "http://api.aviationstack.com/v1/flights";
+const UserUpi = require("../models/Userupi");
 
 // ✅ Fetch all flights from the database
 const razorpay = new Razorpay({
@@ -70,6 +71,7 @@ const verifyPayment = async (req, res) => {
     res.status(500).json({ success: false, message: "Error verifying payment", error: error.message });
   }
 };
+
 const bookFlight = async (req, res) => {
   try {
     const { flightId, userId, paymentId } = req.body;
@@ -83,9 +85,19 @@ const bookFlight = async (req, res) => {
       return res.status(404).json({ success: false, message: "Flight not found" });
     }
 
-    // Mark the flight as booked
-    flight.bookedBy = userId;
+    const user = await UserUpi.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // ✅ Add standard transaction-compatible fields
+    flight.userId = userId;
+    flight.userUpi = user.username || user.upiId;
+    flight.status = "success"; // You can make this dynamic if needed
+    flight.type = "flight-booking";
+    flight.createdAt = new Date(); // Optional, Mongoose does this automatically
     flight.paymentId = paymentId;
+
     await flight.save();
 
     res.status(200).json({ success: true, message: "Flight booked successfully", flight });

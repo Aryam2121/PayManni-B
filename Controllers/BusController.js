@@ -54,11 +54,10 @@ const bookBus = async (req, res) => {
   const { busId, user, date, from, to, seatType, payment } = req.body;
 
   try {
-    if (!busId || !user || !date || !from || !to || !seatType || !payment) {
-      return res.status(400).json({ message: "All fields are required, including payment details" });
+    if (!busId || !user || !date || !from || !to || !seatType || !payment || !user._id || !user.upi) {
+      return res.status(400).json({ message: "All fields are required, including user ID, UPI, and payment details" });
     }
 
-    // Find the bus
     const bus = await Bus.findById(busId);
     if (!bus) {
       return res.status(404).json({ message: "Bus not found" });
@@ -83,22 +82,41 @@ const bookBus = async (req, res) => {
     seat.available = false;
     await bus.save();
 
-    // Simulated booking creation (replace with actual Booking model)
-    const booking = {
-      user,
-      busId,
-      date,
-      from,
-      to,
-      seatType,
-      paymentId: payment.razorpay_payment_id
-    };
+    // Save booking as transaction-like entry
+    const bookedBus = new Bus({
+      userId: user._id,
+      userUpi: user.upi,
+      name: bus.name,
+      type: bus.type,
+      time: bus.time,
+      price: bus.price,
+      availableSeats: bus.availableSeats - 1,
+      status: 'booked',
+      typeTag: 'bus'
+    });
 
-    res.status(201).json({ message: "Bus booked successfully", booking });
+    await bookedBus.save();
+
+    res.status(201).json({
+      message: "Bus booked successfully",
+      booking: {
+        userId: user._id,
+        userUpi: user.upi,
+        busId,
+        date,
+        from,
+        to,
+        seatType,
+        paymentId: payment.razorpay_payment_id,
+        status: 'booked',
+        typeTag: 'bus'
+      }
+    });
   } catch (err) {
     console.error("Error booking bus:", err);
     res.status(500).json({ message: "Error booking bus", error: err.message });
   }
 };
+
 
 module.exports = { getBuses, createOrder, bookBus };

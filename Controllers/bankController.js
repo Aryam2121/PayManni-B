@@ -75,9 +75,37 @@ const getMyAccountDetails = async (req, res) => {
     res.status(500).json({ msg: "Server error", error: err.message });
   }
 };
+const getBankTransactionsForUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const bankRecord = await Bank.findOne({ user: userId }).populate("user");
+
+    if (!bankRecord) {
+      return res.status(404).json({ message: "No bank record found for this user" });
+    }
+
+    const userUpi = bankRecord.user.upiId || "unknown-upi"; // fallback if not available
+
+    const transactions = bankRecord.transactions.map(txn => ({
+      userId: bankRecord.user._id,
+      userUpi,
+      date: txn.date,
+      description: txn.description,
+      amount: txn.amount,
+      type: txn.type,
+      typeTag: "bank",
+    }));
+
+    res.status(200).json(transactions);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch bank transactions", error: error.message });
+  }
+};
 module.exports = {
   getBankInfo,
   addLinkedAccount,
   addTransaction,
   getMyAccountDetails,
+  getBankTransactionsForUser,
 };

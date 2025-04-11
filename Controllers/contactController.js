@@ -1,5 +1,4 @@
 const Contact = require('../models/Contact');
-const Transaction = require('../models/Transaction');
 const { validationResult } = require('express-validator');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
@@ -10,7 +9,7 @@ const razorpay = new Razorpay({
 });
 
 // Get all contacts
-exports.getContacts = async (req, res) => {
+exports.getAllContacts = async (req, res) => {
   try {
     const contacts = await Contact.find();
     res.status(200).json(contacts);
@@ -22,7 +21,7 @@ exports.getContacts = async (req, res) => {
 
 // Add a new contact
 exports.addContact = async (req, res) => {
-  const { name, phone } = req.body;
+  const { name, phone, userId, userUpi } = req.body;
 
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -30,7 +29,15 @@ exports.addContact = async (req, res) => {
   }
 
   try {
-    const newContact = new Contact({ name, phone });
+    const newContact = new Contact({
+      name,
+      phone,
+      userId,
+      userUpi,
+      type: "contact",
+      status: "added",
+    });
+
     await newContact.save();
     res.status(201).json(newContact);
   } catch (error) {
@@ -59,7 +66,7 @@ exports.updateContact = async (req, res) => {
   }
 };
 
-// Step 1: Create Razorpay Order
+// Step 1: Create Razorpay Order (Send Money)
 exports.sendMoney = async (req, res) => {
   const { userId, amount, paymentMethod, contacts } = req.body;
 
@@ -78,45 +85,28 @@ exports.sendMoney = async (req, res) => {
     }
 
     const options = {
-      amount: amount * 100, // Convert INR to paise
+      amount: amount * 100,
       currency: 'INR',
       receipt: `txn_${Date.now()}`,
-      payment_capture: 1, // Auto capture payment
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Save order details to track payment later
-    const transaction = new Transaction({
-      userId,
-      amount,
-      paymentMethod,
-      contacts,
-      razorpayOrderId: order.id,
-      status: "PENDING"
-    });
-
-    await transaction.save();
+    // No transaction saving here
 
     res.status(201).json({ success: true, orderId: order.id, amount, currency: 'INR' });
   } catch (error) {
-    console.error('Error processing transaction:', error);
-    res.status(500).json({ message: 'Server error while processing the transaction.' });
+    console.error('Error creating Razorpay order:', error);
+    res.status(500).json({ message: 'Server error while creating order.' });
   }
 };
 
-// Step 2: Verify Payment After Razorpay Callback
+// Step 2: Verify Payment
 exports.verifyPayment = async (req, res) => {
   const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
 
   try {
-    const transaction = await Transaction.findOne({ razorpayOrderId: razorpay_order_id });
-
-    if (!transaction) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
-
-    // Verify Razorpay signature
     const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
     hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
     const generatedSignature = hmac.digest("hex");
@@ -125,32 +115,29 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid payment signature" });
     }
 
-    // Update transaction status
-    transaction.status = "SUCCESS";
-    transaction.razorpayPaymentId = razorpay_payment_id;
-    await transaction.save();
-
-    res.status(200).json({ message: "Payment verified successfully", transaction });
+    res.status(200).json({
+      message: "Payment verified successfully",
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id
+    });
   } catch (error) {
     console.error("Error verifying payment:", error);
     res.status(500).json({ message: "Server error while verifying payment" });
   }
 };
 
-// Get recent transactions
+// Optional: Handle if someone tries to get transactions (not implemented)
 exports.getTransactions = async (req, res) => {
+  res.status(200).json({ message: "Transaction history feature not available." });
+};
+exports.getContacts = async (req, res) => {
+  const { userId } = req.query; // or from req.user if using auth
+
   try {
-    const transactions = await Transaction.find()
-      .populate('userId')
-      .populate('contacts');
-
-    if (!transactions.length) {
-      return res.status(404).json({ message: 'No transactions found' });
-    }
-
-    res.status(200).json(transactions);
+    const contacts = await Contact.find({ userId });
+    res.status(200).json(contacts);
   } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({ message: 'Server error while fetching transactions.' });
+    console.error('Error fetching contacts:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

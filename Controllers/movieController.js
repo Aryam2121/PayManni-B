@@ -48,6 +48,7 @@ const createMovie = async (req, res) => {
 
 
 // Book movie
+// Book movie
 const bookMovie = async (req, res) => {
   try {
     const { movieId, userId, seatsBooked, totalPrice } = req.body;
@@ -63,27 +64,37 @@ const bookMovie = async (req, res) => {
       return res.status(400).json({ success: false, message: "Not enough seats available" });
     }
 
-    // Update the movie's seatsAvailable and add the booking
-    movie.seatsAvailable -= seatsBooked;
-    movie.bookings.push({
+    // Create a new booking object
+    const booking = {
       userId,
       seatsBooked,
       totalPrice,
       paymentStatus: 'Pending',
-    });
 
-    // Save the movie with updated booking info
+      // ✅ For getAllTransaction compatibility
+      type: 'movie',
+      amount: totalPrice,
+      status: 'pending',
+      createdAt: new Date(),
+    };
+
+    // Update movie data
+    movie.seatsAvailable -= seatsBooked;
+    movie.bookings.push(booking);
+
     await movie.save();
 
     res.status(200).json({
       success: true,
       message: "Movie booked successfully",
+      booking,
       movie,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Booking failed" });
   }
 };
+
 const getMovieById = async (req, res) => {
   try {
     const { movieId } = req.params;
