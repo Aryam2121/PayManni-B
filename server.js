@@ -150,7 +150,6 @@ app.use("/api", createPaymentRoute); // Payment routes
 app.use("/api", upiRoutes);
 app.use("/api", RegisteredUserUpiRoute); // UPI routes
 app.use("/api", BankRoutes); // Bank routes
-app.use("/api", unifiedTransactionRoutes); // Unified transaction routes
-// 🔹 Server Start
+app.use("/api/transactions", unifiedTransactionRoutes);// 🔹 Server Start
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
