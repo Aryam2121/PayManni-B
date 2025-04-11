@@ -50,8 +50,32 @@ const addTransaction = async (req, res) => {
     res.status(500).json({ message: 'Error adding transaction', error });
   }
 };
+const getMyAccountDetails = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const user = await Userupi.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Send only relevant account details
+    res.status(200).json({
+      name: user.name,
+      email: user.email,
+      upiId: user.virtualUpiId || `${user.name.toLowerCase()}@paymanni`,
+      balance: user.balance,
+      linkedAccounts: user.linkedAccounts || [],
+      transactions: user.transactions?.slice(-5).reverse() || [], // Last 5 transactions
+    });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", error: err.message });
+  }
+};
 module.exports = {
   getBankInfo,
   addLinkedAccount,
   addTransaction,
+  getMyAccountDetails,
 };
