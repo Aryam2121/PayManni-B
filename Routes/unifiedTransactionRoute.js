@@ -4,6 +4,6 @@ const { getAllTransactions } = require('../Controllers/UnifiedTransactionControl
 const { authenticateUser } = require('../Middleware/authMiddleware.js'); // assuming JWT auth middleware
 
 
-router.get('/transactions', authenticateUser, getAllTransactions);
+router.get('/all', authenticateUser, getAllTransactions);
 
 module.exports = router;
