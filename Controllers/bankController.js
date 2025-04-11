@@ -60,6 +60,7 @@ const getMyAccountDetails = async (req, res) => {
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
+    const bank = await Bank.findOne({ user: userId });
 
     // Send only relevant account details
     res.status(200).json({
@@ -67,8 +68,8 @@ const getMyAccountDetails = async (req, res) => {
       email: user.email,
       upiId: user.virtualUpiId || `${user.name.toLowerCase()}@paymanni`,
       balance: user.balance,
-      linkedAccounts: user.linkedAccounts || [],
-      transactions: user.transactions?.slice(-5).reverse() || [], // Last 5 transactions
+      linkedAccounts: bank?.linkedAccounts || [],
+      transactions: bank?.transactions?.slice(-5).reverse() || [],
     });
   } catch (err) {
     res.status(500).json({ msg: "Server error", error: err.message });
