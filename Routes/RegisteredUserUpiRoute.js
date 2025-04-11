@@ -4,8 +4,13 @@ const { registerUser, getUserById,
     getUserBankData,
     loginUser} = require("../Controllers/UserupiController");
 
-router.post("/register", registerUser);
-router.get('/:userId', getUserById); 
-router.get('/:userId/bank-data', getUserBankData); 
-router.post('/login', loginUser); // Login route
+    router.post("/register", registerUser);
+    router.post("/login", loginUser);
+    
+    // 👇 More specific route FIRST
+    router.get('/:userId/bank-data', getUserBankData);
+    
+    // 👇 Generic one LAST
+    router.get('/:userId', getUserById); 
+    
 module.exports = router;
