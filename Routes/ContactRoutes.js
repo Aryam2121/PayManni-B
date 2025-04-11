@@ -4,7 +4,7 @@ const { getAllContacts, addContact, updateContact,getContacts } = require("../Co
 const router = express.Router();
 
 // 📌 Get all contacts
-router.get("/contacts", getAllContacts);
+router.get("/contacts", getContacts);
 router.get("/contacts/:userId", getContacts);
 
 // 📌 Add a new contact
