@@ -6,7 +6,7 @@ const { registerUser, getUserById,
 
     router.post("/register", registerUser);
     router.post("/login", loginUser);
-    router.put("/edituser",editUserProfile);
+    router.put("/edituser/:userId",editUserProfile);
     
     // 👇 More specific route FIRST
     router.get('/:userId/bank-data', getUserBankData);
