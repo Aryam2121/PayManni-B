@@ -11,7 +11,7 @@ const authenticateUser = async (req, res, next) => {
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       console.log("Decoded Token:", decoded);
-
+      console.log("Decoded ID:", decoded.id || decoded._id);
       req.user = await Userupi.findById(decoded.id || decoded._id).select("-password");
       
       if (!req.user) {
