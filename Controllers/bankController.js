@@ -1,6 +1,8 @@
 const Bank = require("../models/Bank.js"); // Assuming you have a Bank model defined in models/Bank.js
 // 🔹 GET Bank Info by User ID
 const Userupi = require("../models/Userupi.js"); // Assuming you have a Userupi model defined in models/Userupi.js
+const Wallet = require("../models/Wallet");
+const WalletTransaction = require("../models/WalletTransaction");
 const getBankInfo = async (req, res) => {
   try {
     const bankInfo = await Bank.findOne({ user: req.params.userId });
@@ -40,13 +42,39 @@ const addLinkedAccount = async (req, res) => {
 const addTransaction = async (req, res) => {
   try {
     const { date, description, amount, type } = req.body;
+    const { userId } = req.params;
 
-    const bank = await Bank.findOne({ user: req.params.userId });
+    const bank = await Bank.findOne({ user: userId });
     if (!bank) return res.status(404).json({ message: 'Bank account not found' });
 
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) return res.status(404).json({ message: 'Wallet not found' });
+
+    // ✅ Add transaction to bank
     bank.transactions.unshift({ date, description, amount, type });
     await bank.save();
-    res.status(200).json(bank);
+
+    // ✅ Update wallet balance
+    const balanceChange = type === "Withdraw" ? -amount : amount;
+    if (type === "Withdraw" && wallet.balance < amount) {
+      return res.status(400).json({ message: "Insufficient wallet balance" });
+    }
+
+    wallet.balance += balanceChange;
+    await wallet.save();
+
+    // ✅ Log to WalletTransaction model
+    await WalletTransaction.create({
+      user: userId,
+      amount,
+      type,
+      description: `Bank ${type} - ${description}`,
+    });
+
+    res.status(200).json({
+      msg: "Transaction recorded & wallet updated",
+      newWalletBalance: wallet.balance,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error adding transaction', error });
   }
