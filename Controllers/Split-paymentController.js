@@ -126,9 +126,12 @@ exports.createPaymentOrder = async (req, res) => {
   try {
     const { groupId, userName } = req.body;
     const group = await Group.findById(groupId);
+
     if (!group) return res.status(404).json({ message: "Group not found." });
 
-    const user = group.members.find((member) => member.name === userName);
+    // Trim and convert both group member names and the provided userName to lowercase for case-insensitive comparison
+    const user = group.members.find((member) => member.name.trim().toLowerCase() === userName.trim().toLowerCase());
+
     if (!user) return res.status(404).json({ message: "User not found in group." });
 
     const amount = user.payment * 100; // Convert to paise for Razorpay
