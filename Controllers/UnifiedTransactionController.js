@@ -66,7 +66,10 @@ const getAllTransactions = async (req, res) => {
       description: txn.description || txn.reason || `${type} transaction`,
       date: txn.date || txn.paymentDate || txn.createdAt,
       details: txn,
+      razorpayOrderId: txn.razorpayOrderId, // Add Razorpay order ID
+      razorpayPaymentId: txn.razorpayPaymentId, // Add Razorpay payment ID
     });
+    
 
     const allTransactions = [
       ...walletTxns.map(txn => formatTxn('Wallet', txn)),
