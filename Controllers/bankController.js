@@ -88,6 +88,8 @@ const getMyAccountDetails = async (req, res) => {
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
+    const wallet = await Wallet.findOne({ userId });
+
     const bank = await Bank.findOne({ user: userId });
 
     // Send only relevant account details
@@ -95,7 +97,7 @@ const getMyAccountDetails = async (req, res) => {
       name: user.name,
       email: user.email,
       upiId: user.virtualUpiId || `${user.name.toLowerCase()}@paymanni`,
-      balance: user.balance,
+      balance: wallet?.balance ,
       linkedAccounts: bank?.linkedAccounts || [],
       transactions: bank?.transactions?.slice(-5).reverse() || [],
     });
