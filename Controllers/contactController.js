@@ -2,7 +2,8 @@ const Contact = require('../models/Contact');
 const { validationResult } = require('express-validator');
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
-const WalletTransaction = require('../models/WalletTransaction'); 
+const WalletTransaction = require('../models/WalletTransaction');
+const deductFromWallet = require ('../utils/deductFromWallet');
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
@@ -10,15 +11,17 @@ const razorpay = new Razorpay({
 
 // Get all contacts
 exports.getContacts = async (req, res) => {
+  const userId = req.params.userId;
   try {
-    const contacts = await Contact.find();
+    const contacts = userId
+      ? await Contact.find({ userId }) // Filter by userId if provided
+      : await Contact.find();
     res.status(200).json(contacts);
   } catch (error) {
     console.error('Error fetching contacts:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
-
 // Add a new contact
 exports.addContact = async (req, res) => {
   const { name, phone, userId, userUpi } = req.body;
@@ -77,7 +80,14 @@ exports.sendMoney = async (req, res) => {
   if (isNaN(amount) || amount <= 0) {
     return res.status(400).json({ error: 'Invalid amount. Amount must be a positive number.' });
   }
-
+  if (paymentMethod === "wallet") {
+    await deductFromWallet(userId, amount, `Payment to contacts: ${contacts.join(', ')}`);
+  
+    return res.status(200).json({
+      success: true,
+      message: "Money sent via wallet successfully"
+    });
+  }
   try {
     // Check if the provided contacts exist in the database
     const existingContacts = await Contact.find({ '_id': { $in: contacts } });
