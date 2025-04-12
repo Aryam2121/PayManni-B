@@ -2,6 +2,8 @@ const Group = require("../models/Group");
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 require("dotenv").config();
+const Wallet = require("../models/Wallet");
+const WalletTransaction = require("../models/WalletTransaction");
 
 // 🔥 Razorpay Instance
 const razorpay = new Razorpay({
@@ -149,12 +151,41 @@ exports.createPaymentOrder = async (req, res) => {
 // ✅ Verify Razorpay Payment
 exports.verifyPayment = async (req, res) => {
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, groupId, userName } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, groupId, userName, method } = req.body;
+    const userId = req.user?._id;
 
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-      return res.status(400).json({ message: "Invalid payment data" });
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Group not found." });
+
+    const user = group.members.find((member) => member.name === userName);
+    if (!user) return res.status(404).json({ message: "User not found in group." });
+
+    // 💰 Handle Wallet Payment
+    if (method === "wallet") {
+      const wallet = await Wallet.findOne({ userId });
+      if (!wallet || wallet.balance < user.payment) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
+
+      // Deduct amount
+      wallet.balance -= user.payment;
+      await wallet.save();
+
+      // Log transaction
+      await WalletTransaction.create({
+        user: userId,
+        amount: user.payment,
+        type: "Withdraw",
+        description: `Group Payment - ${group.name}`,
+      });
+
+      user.paymentStatus = "Paid (Wallet)";
+      await group.save();
+
+      return res.status(200).json({ success: true, message: "Payment successful via wallet" });
     }
 
+    // 💳 Razorpay Payment Verification
     const generated_signature = crypto
       .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -164,20 +195,27 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment verification failed" });
     }
 
-    // Update payment status
-    const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ message: "Group not found." });
-
-    const user = group.members.find((member) => member.name === userName);
-    if (!user) return res.status(404).json({ message: "User not found in group." });
-
-    user.paymentStatus = "Paid";
+    // Update status
+    user.paymentStatus = "Paid (Razorpay)";
     await group.save();
 
-    res.status(200).json({ success: true, message: "Payment verified successfully" });
+    // Log Razorpay transaction
+    await WalletTransaction.create({
+      user: userId,
+      amount: user.payment,
+      type: "debit",
+      method: method === "wallet" ? "Wallet" : "Razorpay",
+      status: "success",
+      description: `Group Payment - ${group.name}${method === "razorpay" ? " (Razorpay)" : ""}`,
+      groupId: groupId,
+      razorpayOrderId: razorpay_order_id || null,
+      razorpayPaymentId: razorpay_payment_id || null,
+    });
+
+    res.status(200).json({ success: true, message: "Razorpay payment verified and logged" });
   } catch (error) {
-    console.error("Error verifying payment:", error);
-    res.status(500).json({ message: "Error verifying payment", error: error.message });
+    console.error("Payment verification error:", error);
+    res.status(500).json({ message: "Payment verification failed", error: error.message });
   }
 };
 exports.getAllGroupTransactions = async (req, res) => {
@@ -188,5 +226,44 @@ exports.getAllGroupTransactions = async (req, res) => {
     res.status(200).json(groupTransactions);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+exports.checkWalletBalance = async (req, res) => {
+  try {
+    const { groupId, userName } = req.body;
+    const userId = req.user?._id;
+
+    // Check if group exists
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    // Check if user exists in group
+    const user = group.members.find((m) => m.name === userName);
+    if (!user) return res.status(404).json({ message: "User not found in group" });
+
+    // Check wallet
+    const wallet = await Wallet.findOne({ userId });
+    if (!wallet) return res.json({ canPayWithWallet: false, message: "Wallet not found" });
+
+    if (wallet.balance >= user.payment) {
+      return res.json({ canPayWithWallet: true });
+    } else {
+      return res.json({ canPayWithWallet: false, message: "Insufficient wallet balance" });
+    }
+  } catch (error) {
+    console.error("Error checking wallet balance:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+exports.getGroupTransactions = async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const transactions = await WalletTransaction.find({ groupId }).populate("user", "name email");
+
+    res.status(200).json({ success: true, transactions });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch group transactions", error: err.message });
   }
 };
