@@ -8,6 +8,8 @@ const walletTransactionSchema = new mongoose.Schema({
   razorpayOrderId: { type: String }, // New field for storing Razorpay order ID
   razorpayPaymentId: { type: String }, // New field for storing Razorpay payment ID
   status: { type: String, default: 'pending' }, // status like 'completed', 'pending'
+  groupId: { type: mongoose.Schema.Types.ObjectId, ref: "Group" },
+
   date: { type: Date, default: Date.now },
 });
 
