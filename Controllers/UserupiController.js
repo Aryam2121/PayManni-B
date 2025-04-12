@@ -70,7 +70,7 @@ const registerUser = async (req, res) => {
     if (wallet.balance >= registrationFee) {
       // Deduct fee
       wallet.balance -= registrationFee;
-      await wallet.save();
+      await wallet.updateBalance(-registrationFee); 
 
       // ✅ Log transaction
       await WalletTransaction.create({
