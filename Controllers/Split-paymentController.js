@@ -14,11 +14,10 @@ const razorpay = new Razorpay({
 // ✅ Create a new group
 exports.createGroup = async (req, res) => {
   try {
-    const { name, totalAmount } = req.body;
-    const userId = req.user?._id; // assuming you're using auth middleware that adds user to req
+    const { name, totalAmount, userId } = req.body;  // Now we're expecting userId to be part of the request body
 
     if (!name || !totalAmount || !userId) {
-      return res.status(400).json({ message: "Name, amount and userId are required." });
+      return res.status(400).json({ message: "Name, amount, and userId are required." });
     }
 
     const newGroup = new Group({
@@ -34,6 +33,7 @@ exports.createGroup = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 // ✅ Get all groups
