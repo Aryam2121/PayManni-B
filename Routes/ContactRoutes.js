@@ -8,7 +8,7 @@ router.get("/contacts", getContacts);
 router.get("/contacts/:userId", getContacts);
 
 // 📌 Add a new contact
-router.post("/contacts", addContact);
+router.post("/addcontacts", addContact);
 
 // 📌 Update a contact (favorite/unfavorite)
 router.put("/contacts/:id", updateContact);
