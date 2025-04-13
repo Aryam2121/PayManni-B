@@ -7,7 +7,8 @@ router.post("/generateBuses", async (req, res) => {
       await generateBuses();
       res.status(200).json({ message: "Buses created successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Error creating buses", error });
+      console.error("Error in generateBuses route:", error); // Add this
+      res.status(500).json({ message: "Error creating buses", error: error.message || error });
     }
   });
 
