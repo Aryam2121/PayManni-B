@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const generateBuses = require("../Controllers/generateBusData.js");
+const {generateBuses} = require("../Controllers/generateBusData.js");
 
 router.post("/generateBuses", async (req, res) => {
     try {
