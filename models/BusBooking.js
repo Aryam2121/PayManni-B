@@ -3,12 +3,13 @@ const mongoose = require("mongoose");
 const busSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Userupi", // Optional, but useful if you use the user model
+    ref: "Userupi",
     required: true
   },
   userUpi: {
     type: String,
-    required: true
+    required: true,
+    match: /^[\w.-]+@[\w.-]+$/ // Basic UPI format validation
   },
   name: {
     type: String,
@@ -20,76 +21,66 @@ const busSchema = new mongoose.Schema({
     required: true
   },
   from: {
-    type: String,  // Starting city of the bus
+    type: String,
     required: true
   },
   to: {
-    type: String,  // Destination city of the bus
+    type: String,
     required: true
   },
   date: {
-    type: Date,  // Date when the bus is scheduled to travel
+    type: Date,
     required: true
   },
   departureTime: {
-    type: String,  // Exact departure time of the bus (e.g., "07:05")
+    type: Date, // Better than string for sorting and filtering
     required: true
   },
   boardingTime: {
-    type: String,  // Time when passengers should board (e.g., "06:30")
+    type: String,
     required: true
   },
   boardingStation: {
-    type: String,  // Boarding station or pickup point
+    type: String,
     required: true
   },
   droppingPoint: {
-    type: String,  // Dropping point or final destination for the bus
+    type: String,
     required: true
   },
   price: {
-    type: Number,  // Price of the bus seat
+    type: Number,
     required: true
   },
   availableSeats: {
-    type: Number,  // Number of available seats on the bus
+    type: Number,
     required: true
   },
+
+  // Optional Future Upgrade: Detailed seat structure
+  // seats: [{
+  //   seatNumber: String,
+  //   isAvailable: { type: Boolean, default: true },
+  //   isWindow: { type: Boolean, default: false },
+  //   genderRestriction: { type: String, enum: ['male', 'female', 'none'], default: 'none' }
+  // }],
+
   mealsIncluded: {
-    type: Boolean,  // Whether meals are complimentary or not (true/false)
+    type: Boolean,
     default: false
   },
   amenities: {
-    type: [String],  // List of amenities provided on the bus (e.g., Wi-Fi, AC, USB charging ports)
+    type: [String],
     default: []
   },
-  airConditioning: {
-    type: Boolean,  // Indicates whether the bus has air conditioning
-    default: false
-  },
-  wifi: {
-    type: Boolean,  // Indicates whether the bus has Wi-Fi
-    default: false
-  },
-  recliningSeats: {
-    type: Boolean,  // Indicates whether the bus has reclining seats
-    default: false
-  },
-  powerOutlets: {
-    type: Boolean,  // Indicates whether there are power outlets available for charging devices
-    default: false
-  },
-  waterBottles: {
-    type: Boolean,  // Indicates whether bottled water is provided
-    default: false
-  },
-  onBoardToilets: {
-    type: Boolean,  // Indicates whether there are toilets on board
-    default: false
-  },
-  firstAidKit: {
-    type: Boolean,  // Indicates whether a first aid kit is available
-    default: false
+  features: {
+    airConditioning: { type: Boolean, default: false },
+    wifi: { type: Boolean, default: false },
+    recliningSeats: { type: Boolean, default: false },
+    powerOutlets: { type: Boolean, default: false },
+    waterBottles: { type: Boolean, default: false },
+    onBoardToilets: { type: Boolean, default: false },
+    firstAidKit: { type: Boolean, default: false }
   },
   journeyType: {
     type: String,
@@ -97,19 +88,18 @@ const busSchema = new mongoose.Schema({
     required: true
   },
   pickupTime: {
-    type: String,  // Specific pickup time for certain points
+    type: String,
     default: ''
   },
   dropOffTime: {
-    type: String,  // Estimated drop-off time at the destination
-    default: ''
+    type: Date
   },
   busNumber: {
-    type: String,  // Unique bus number for identification
+    type: String,
     required: true
   },
   driverContact: {
-    type: String,  // Driver's contact number for emergency
+    type: String,
     required: true
   },
   status: {
@@ -119,9 +109,12 @@ const busSchema = new mongoose.Schema({
   },
   typeTag: {
     type: String,
-    default: 'bus' // for filtering transactions
+    default: 'bus'
   }
 }, { timestamps: true });
+
+// 🚀 Create an index to optimize search
+busSchema.index({ from: 1, to: 1, date: 1 });
 
 const Bus = mongoose.model("Bus", busSchema);
 
