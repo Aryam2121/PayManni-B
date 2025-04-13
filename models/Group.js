@@ -10,7 +10,7 @@ const GroupSchema = new mongoose.Schema({
   ],
   totalAmount: { type: Number, required: true },
 
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userupi", required: true }, // Who created the group/split
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "Userupi", required: false }, // Who created the group/split
   description: { type: String }, // Optional for notes like "Dinner Split", etc.
 
 }, { timestamps: true }); // Adds createdAt and updatedAt automatically
