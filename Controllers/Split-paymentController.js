@@ -86,7 +86,6 @@ exports.removeUserFromGroup = async (req, res) => {
   }
 };
 
-
 // ✅ Update payment amount for a user
 exports.updateUserPayment = async (req, res) => {
   try {
