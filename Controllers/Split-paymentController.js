@@ -147,28 +147,32 @@ exports.createPaymentOrder = async (req, res) => {
       return res.status(404).json({ message: "Group not found." });
     }
 
-    // Log group members for debugging
     console.log("Group members:", group.members);
 
-    // Trim and convert both group member names and the provided userName to lowercase for case-insensitive comparison
-    const user = group.members.find((member) => member.name.trim().toLowerCase() === userName.trim().toLowerCase());
+    const user = group.members.find(
+      (member) => member.name.trim().toLowerCase() === userName.trim().toLowerCase()
+    );
 
     if (!user) {
       return res.status(404).json({ message: "User not found in group." });
     }
 
-    const amount = user.payment * 100; // Convert to paise for Razorpay
+    if (!user.payment || isNaN(user.payment)) {
+      return res.status(400).json({ message: "Invalid or missing payment amount for the user." });
+    }
+
+    const amount = user.payment * 100;
+    console.log("User payment:", user.payment);
+    console.log("Calculated amount:", amount);
 
     const options = {
       amount,
       currency: "INR",
       receipt: `group_${groupId}_user_${userName}_${Date.now()}`,
-      payment_capture: 1, // Auto-capture payment
+      payment_capture: 1,
     };
 
     const order = await razorpay.orders.create(options);
-    
-    // Log the Razorpay order response for debugging
     console.log("Razorpay order created:", order);
 
     res.status(201).json({ success: true, order });
