@@ -47,7 +47,7 @@ const generateRandomData = () => {
   };
 };
 
-// Generate 50 buses
+// Generate 100 buses
 const generateBuses = async () => {
   try {
     const buses = [];
