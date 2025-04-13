@@ -76,12 +76,16 @@ exports.removeUserFromGroup = async (req, res) => {
     if (!group) return res.status(404).json({ message: "Group not found." });
 
     group.members = group.members.filter((member) => member.name !== userName);
-    await group.save();
+
+    // ✅ This skips checking other required fields like createdBy
+    await group.save({ validateBeforeSave: false });
+
     res.status(200).json(group);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // ✅ Update payment amount for a user
 exports.updateUserPayment = async (req, res) => {
