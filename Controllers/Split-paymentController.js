@@ -110,18 +110,31 @@ exports.splitPayment = async (req, res) => {
   try {
     const { groupId } = req.body;
     const group = await Group.findById(groupId);
-    if (!group) return res.status(404).json({ message: "Group not found." });
+    
+    if (!group) {
+      return res.status(404).json({ message: "Group not found." });
+    }
+
+    // Check if the total amount is valid
+    if (!group.totalAmount || isNaN(group.totalAmount)) {
+      return res.status(400).json({ message: "Invalid total amount in the group." });
+    }
 
     const totalMembers = group.members.length;
-    if (totalMembers === 0) return res.status(400).json({ message: "No members in the group." });
+    if (totalMembers === 0) {
+      return res.status(400).json({ message: "No members in the group." });
+    }
 
-    const sharePerPerson = (group.totalAmount / totalMembers).toFixed(2);
-    group.members.forEach((member) => (member.payment = sharePerPerson));
+    const sharePerPerson = (group.totalAmount / totalMembers);  // Keep it as a number
+    group.members.forEach((member) => {
+      member.payment = sharePerPerson;  // Store as number
+    });
 
     await group.save();
     res.status(200).json({ message: "Payment split successfully.", group });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error during payment split:", error); // Add detailed logs for debugging
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
