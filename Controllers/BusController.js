@@ -7,7 +7,21 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
+const createMultipleBuses = async (req, res) => {
+  try {
+    const buses = req.body;
 
+    if (!Array.isArray(buses) || buses.length === 0) {
+      return res.status(400).json({ message: "Please provide an array of bus objects." });
+    }
+
+    const createdBuses = await Bus.insertMany(buses);
+    res.status(201).json({ message: "Buses added successfully", buses: createdBuses });
+  } catch (error) {
+    console.error("Error creating multiple buses:", error);
+    res.status(500).json({ message: "Failed to add buses", error: error.message });
+  }
+};
 const getBuses = async (req, res) => {
   try {
     const { from, to, date, seatType } = req.query;
@@ -119,4 +133,4 @@ const bookBus = async (req, res) => {
 };
 
 
-module.exports = { getBuses, createOrder, bookBus };
+module.exports = { getBuses, createOrder, bookBus,createMultipleBuses };
