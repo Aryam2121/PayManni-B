@@ -16,7 +16,7 @@ const busSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ["AC Seater", "Non-AC Seater", "AC Sleeper", "Non-AC Sleeper"]
+    enum: ["AC Seater", "Non-AC Seater", "AC Sleeper", "Non-AC Sleeper"],
     required: true
   },
   time: {
