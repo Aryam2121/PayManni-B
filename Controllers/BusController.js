@@ -7,6 +7,8 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET
 });
+
+// Create Multiple Buses
 const createMultipleBuses = async (req, res) => {
   try {
     const buses = req.body;
@@ -22,6 +24,8 @@ const createMultipleBuses = async (req, res) => {
     res.status(500).json({ message: "Failed to add buses", error: error.message });
   }
 };
+
+// Get Buses based on Filters
 const getBuses = async (req, res) => {
   try {
     const { from, to, date, seatType } = req.query;
@@ -106,7 +110,20 @@ const bookBus = async (req, res) => {
       price: bus.price,
       availableSeats: bus.availableSeats - 1,
       status: 'booked',
-      typeTag: 'bus'
+      typeTag: 'bus',
+      // Additional Fields from Updated Schema
+      airConditioning: bus.airConditioning,
+      wifi: bus.wifi,
+      recliningSeats: bus.recliningSeats,
+      powerOutlets: bus.powerOutlets,
+      waterBottles: bus.waterBottles,
+      onBoardToilets: bus.onBoardToilets,
+      firstAidKit: bus.firstAidKit,
+      journeyType: bus.journeyType,
+      pickupTime: bus.pickupTime,
+      dropOffTime: bus.dropOffTime,
+      busNumber: bus.busNumber,
+      driverContact: bus.driverContact
     });
 
     await bookedBus.save();
@@ -132,5 +149,4 @@ const bookBus = async (req, res) => {
   }
 };
 
-
-module.exports = { getBuses, createOrder, bookBus,createMultipleBuses };
+module.exports = { getBuses, createOrder, bookBus, createMultipleBuses };
