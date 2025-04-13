@@ -141,32 +141,36 @@ exports.splitPayment = async (req, res) => {
 exports.createPaymentOrder = async (req, res) => {
   try {
     const { groupId, userName } = req.body;
-    console.log("Incoming payload:", { groupId, userName });
+    console.log("👉 Incoming payload:", { groupId, userName });
 
     const group = await Group.findById(groupId);
     if (!group) {
-      console.log("Group not found");
+      console.log("❌ Group not found");
       return res.status(404).json({ message: "Group not found." });
     }
 
-    console.log("Group members:", group.members);
+    console.log("✅ Group found. Members:", group.members);
 
     const user = group.members.find(
       (member) => member.name.trim().toLowerCase() === userName.trim().toLowerCase()
     );
 
     if (!user) {
-      console.log("User not found in group");
+      console.log("❌ User not found in group");
       return res.status(404).json({ message: "User not found in group." });
     }
 
-    if (!user.payment || isNaN(user.payment)) {
-      console.log("Invalid payment for user:", user);
+    console.log("✅ User found:", user);
+
+    const payment = Number(user.payment); // Ensure it's a number
+
+    if (!payment || isNaN(payment)) {
+      console.log("❌ Invalid or missing payment amount:", user.payment);
       return res.status(400).json({ message: "Invalid or missing payment amount for the user." });
     }
 
-    const amount = user.payment * 100;
-    console.log("Amount to be charged:", amount);
+    const amount = payment * 100; // Convert to paise
+    console.log("💰 Amount to be charged (in paise):", amount);
 
     const options = {
       amount,
@@ -176,7 +180,7 @@ exports.createPaymentOrder = async (req, res) => {
     };
 
     const order = await razorpay.orders.create(options);
-    console.log("Razorpay order created:", order);
+    console.log("✅ Razorpay order created:", order);
 
     res.status(201).json({ success: true, order });
   } catch (error) {
