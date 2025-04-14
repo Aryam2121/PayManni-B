@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const {
   getAllFlights,
-  fetchAndStoreFlights,
   addFlight,
   addMultipleFlights,
   searchFlights,
@@ -14,7 +13,6 @@ const {
 
 // Flight-related routes
 router.get("/flights", getAllFlights);
-router.get("/flights/fetch", fetchAndStoreFlights);
 router.post("/flights", addFlight);
 router.post("/flights/multiple", addMultipleFlights);
 router.post("/flights/search", searchFlights);

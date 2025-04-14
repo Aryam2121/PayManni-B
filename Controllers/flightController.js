@@ -198,4 +198,4 @@ const getFlightDetails = async (req, res) => {
   }
 };
 
-module.exports = { getAllFlights, fetchAndStoreFlights, addFlight, addMultipleFlights, searchFlights, getFlightDetails,createOrder, verifyPayment, bookFlight };
+module.exports = { getAllFlights, addFlight, addMultipleFlights, searchFlights, getFlightDetails,createOrder, verifyPayment, bookFlight };
