@@ -30,23 +30,47 @@ const getBuses = async (req, res) => {
   try {
     const { from, to, date, seatType } = req.query;
 
+    // Initialize an empty query object
     let query = {};
+
+    // Check and add conditions to the query object
     if (from) query.from = from;
     if (to) query.to = to;
-    if (date) query.date = date;
-    if (seatType) query.seats = { $elemMatch: { type: seatType, available: true } };
 
+    // Convert date to a Date object and filter by the exact date
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1); // Include the full day range
+
+      query.date = {
+        $gte: startDate,
+        $lt: endDate,
+      };
+    }
+
+    // Filter based on seatType (if provided), ensuring the seat is available
+    if (seatType) {
+      query["seats.type"] = seatType; // Assuming seats are stored in an array with `type` and `available`
+      query["seats.available"] = true;
+    }
+
+    // Fetch buses from the database
     const buses = await Bus.find(query).lean();
+
+    // If no buses are found, return a 404 error
     if (!buses.length) {
       return res.status(404).json({ message: "No buses found for the given criteria" });
     }
 
+    // Return the buses in the response
     res.status(200).json(buses);
   } catch (err) {
     console.error("Error fetching buses:", err);
     res.status(500).json({ message: "Error fetching buses", error: err.message });
   }
 };
+
 
 // Create Razorpay Order
 const createOrder = async (req, res) => {

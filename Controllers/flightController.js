@@ -2,9 +2,9 @@ const axios = require("axios");
 const Flight = require("../models/Flight");
 require("dotenv").config();  // Make sure to require dotenv
 const Razorpay = require('razorpay');
-const API_KEY = process.env.AVIATION_API_KEY;
-const BASE_URL = "http://api.aviationstack.com/v1/flights";
 const UserUpi = require("../models/Userupi");
+const deductFromWallet = require("../utils/deductFromWallet");
+const crypto = require("crypto");
 
 // ✅ Fetch all flights from the database
 const razorpay = new Razorpay({
@@ -74,10 +74,17 @@ const verifyPayment = async (req, res) => {
 
 const bookFlight = async (req, res) => {
   try {
-    const { flightId, userId, paymentId } = req.body;
+    const {
+      flightId,
+      userId,
+      paymentMethod,  // "wallet" or "razorpay"
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature
+    } = req.body;
 
-    if (!flightId || !userId || !paymentId) {
-      return res.status(400).json({ success: false, message: "Flight ID, User ID, and Payment ID are required" });
+    if (!flightId || !userId || !paymentMethod) {
+      return res.status(400).json({ success: false, message: "Required fields are missing" });
     }
 
     const flight = await Flight.findById(flightId);
@@ -90,48 +97,46 @@ const bookFlight = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // ✅ Add standard transaction-compatible fields
-    flight.userId = userId;
-    flight.userUpi = user.username || user.upiId;
-    flight.status = "success"; // You can make this dynamic if needed
-    flight.type = "flight-booking";
-    flight.createdAt = new Date(); // Optional, Mongoose does this automatically
-    flight.paymentId = paymentId;
+    // ✅ Payment Handling
+    if (paymentMethod === "wallet") {
+      await deductFromWallet(userId, flight.price, "Flight booking");
+    } else if (paymentMethod === "razorpay") {
+      if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+        return res.status(400).json({ success: false, message: "Razorpay payment details required" });
+      }
 
-    await flight.save();
+      const generatedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest("hex");
 
-    res.status(200).json({ success: true, message: "Flight booked successfully", flight });
-  } catch (error) {
-    console.error("Error booking flight:", error);
-    res.status(500).json({ success: false, message: "Error booking flight", error: error.message });
-  }
-};
+      if (generatedSignature !== razorpaySignature) {
+        return res.status(400).json({ success: false, message: "Invalid payment signature" });
+      }
 
-// ✅ Fetch flights from AviationStack API and store in DB
-const fetchAndStoreFlights = async (req, res) => {
-  try {
-    const response = await axios.get(BASE_URL, { params: { access_key: API_KEY } });
-
-    if (!response.data || !response.data.data) {
-      return res.status(404).json({ message: "No flight data found from API" });
+      flight.paymentId = razorpayPaymentId;
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid payment method" });
     }
 
-    const flightsData = response.data.data.map(flight => ({
-      airline: flight.airline.name || "Unknown",
-      departure: flight.departure.iata || "Unknown",
-      arrival: flight.arrival.iata || "Unknown",
-      duration: flight.flight_time || "Unknown",
-      price: Math.floor(Math.random() * 5000) + 2000,
-      departureDate: flight.departure.estimated || flight.departure.scheduled,
-      returnDate: null,
-      passengers: Math.floor(Math.random() * 200) + 50,
-      travelClass: "Economy"
-    }));
+    // ✅ Save booking
+    flight.userId = userId;
+    flight.userUpi = user.username || user.upiId;
+    flight.status = "success";
+    flight.type = "flight-booking";
+    flight.createdAt = new Date();
 
-    const savedFlights = await Flight.insertMany(flightsData);
-    res.status(201).json({ message: "Flights fetched and stored successfully", flights: savedFlights });
+    const bookedFlight = await flight.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Flight booked successfully",
+      flight: bookedFlight,
+      paidBy: paymentMethod
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error fetching flights", error: error.message });
+    console.error("Flight booking error:", error);
+    res.status(500).json({ success: false, message: "Error booking flight", error: error.message });
   }
 };
 
