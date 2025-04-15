@@ -26,8 +26,6 @@ router.get("/wallet", walletController.getWalletDetails);
 // ✅ Deposit money via Razorpay
 router.post("/deposit", walletController.depositMoney);
 
-// ✅ Confirm deposit via Razorpay Webhook (Webhook doesn't require authentication)
-router.post("/confirm-deposit", walletController.confirmDeposit);
 
 // ✅ Withdraw money
 router.post("/withdraw", walletController.withdrawMoney);
