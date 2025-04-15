@@ -5,9 +5,9 @@ const Bank = require("../models/Bank");
 // 🧾 Get Wallet Details
 const getWalletDetails = async (req, res) => {
   try {
-    const userId = req.user.id;
-
+    const userId = req.body.userId || req.user?.id;
     const wallet = await Wallet.findOne({ userId });
+
     if (!wallet) return res.status(404).json({ message: "Wallet not found" });
 
     const transactions = await WalletTransaction.find({ user: userId }).sort({ createdAt: -1 });
@@ -17,6 +17,7 @@ const getWalletDetails = async (req, res) => {
       transactions,
     });
   } catch (error) {
+    console.error("Error in getWalletDetails:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
@@ -24,8 +25,7 @@ const getWalletDetails = async (req, res) => {
 // 💰 Deposit from Bank to Wallet
 const depositMoney = async (req, res) => {
   try {
-    const { amount } = req.body;
-    const userId = req.user.id;
+    const { amount, userId } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Invalid deposit amount" });
@@ -63,6 +63,7 @@ const depositMoney = async (req, res) => {
 
     res.json({ message: "Deposit successful", walletBalance: wallet.balance });
   } catch (error) {
+    console.error("Error in depositMoney:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
@@ -70,8 +71,7 @@ const depositMoney = async (req, res) => {
 // 💸 Withdraw from Wallet to Bank
 const withdrawMoney = async (req, res) => {
   try {
-    const { amount } = req.body;
-    const userId = req.user.id;
+    const { amount, userId } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "Invalid withdrawal amount" });
@@ -106,6 +106,7 @@ const withdrawMoney = async (req, res) => {
 
     res.json({ message: "Withdrawal successful", walletBalance: wallet.balance });
   } catch (error) {
+    console.error("Error in withdrawMoney:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
