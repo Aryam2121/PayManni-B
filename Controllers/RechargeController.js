@@ -1,6 +1,8 @@
 const Razorpay = require("razorpay");
 const Recharge = require("../models/Recharge");
 const WalletTransaction = require("../models/WalletTransaction");
+const Wallet = require("../models/Wallet"); // Make sure you import this
+const crypto = require("crypto");
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -8,13 +10,13 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-// Recharge function with Razorpay
+// Recharge function (Wallet or Razorpay)
 const rechargeAccount = async (req, res) => {
   try {
     const { userId, amount, paymentMethod, promoCode } = req.body;
 
     // Input validation
-    if (!userId || !amount || isNaN(amount) || amount <= 0) {
+    if (!userId || !amount || isNaN(amount) || amount <= 0 || !paymentMethod) {
       return res.status(400).json({ message: "Invalid input values" });
     }
 
@@ -24,42 +26,83 @@ const rechargeAccount = async (req, res) => {
       finalAmount = finalAmount * 0.9; // Apply 10% discount
     }
 
-    // Create Razorpay order
-    const options = {
-      amount: Math.round(finalAmount * 100), // Razorpay expects amount in paise
-      currency: "INR",
-      receipt: `recharge_${Date.now()}`,
-      payment_capture: 1, // Auto capture payment
-    };
+    if (paymentMethod === "Wallet") {
+      // 🔥 Direct Wallet recharge
+      const wallet = await Wallet.findOne({ userId });
+      if (!wallet) {
+        return res.status(404).json({ message: "Wallet not found" });
+      }
 
-    const order = await razorpay.orders.create(options);
+      if (wallet.balance < finalAmount) {
+        return res.status(400).json({ message: "Insufficient wallet balance" });
+      }
 
-    // Save recharge in DB (Pending)
-    const recharge = new Recharge({
-      userId,
-      amount: finalAmount,
-      paymentMethod,
-      promoCode,
-      status: "Pending", // Set initial status to Pending
-      razorpayOrderId: order.id,
-      rechargeDate: new Date(),
-    });
+      // Deduct wallet balance
+      wallet.balance -= finalAmount;
+      await wallet.save();
 
-    await recharge.save();
+      // Create recharge record
+      const recharge = new Recharge({
+        userId,
+        amount: finalAmount,
+        paymentMethod: "Wallet",
+        promoCode,
+        status: "Completed",
+        rechargeDate: new Date(),
+      });
+      await recharge.save();
 
-    // 🔥 Log as WalletTransaction (Recharge initiated)
-    await WalletTransaction.create({
-      user: userId,
-      amount: finalAmount,
-      type: "Recharge",
-      description: `Recharge initiated${promoCode ? ` with promo ${promoCode}` : ""}`,
-    });
+      // Log wallet transaction
+      await WalletTransaction.create({
+        user: userId,
+        amount: finalAmount,
+        type: "Debit",
+        description: `Recharge using Wallet${promoCode ? ` with promo ${promoCode}` : ""}`,
+      });
 
-    return res.status(201).json({
-      message: "Order created successfully. Proceed to payment.",
-      order,
-      recharge,
-    });
+      return res.status(201).json({
+        message: "Recharge successful via wallet",
+        recharge,
+      });
+    } else if (paymentMethod === "Razorpay") {
+      // 🔥 Razorpay flow
+      const options = {
+        amount: Math.round(finalAmount * 100), // Razorpay expects paise
+        currency: "INR",
+        receipt: `recharge_${Date.now()}`,
+        payment_capture: 1,
+      };
+
+      const order = await razorpay.orders.create(options);
+
+      // Save recharge in DB (Pending)
+      const recharge = new Recharge({
+        userId,
+        amount: finalAmount,
+        paymentMethod: "Razorpay",
+        promoCode,
+        status: "Pending",
+        razorpayOrderId: order.id,
+        rechargeDate: new Date(),
+      });
+      await recharge.save();
+
+      // Log WalletTransaction (Recharge Initiated)
+      await WalletTransaction.create({
+        user: userId,
+        amount: finalAmount,
+        type: "Recharge",
+        description: `Recharge initiated via Razorpay${promoCode ? ` with promo ${promoCode}` : ""}`,
+      });
+
+      return res.status(201).json({
+        message: "Order created successfully. Proceed to payment.",
+        order,
+        recharge,
+      });
+    } else {
+      return res.status(400).json({ message: "Invalid payment method" });
+    }
   } catch (error) {
     console.error("Recharge error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
