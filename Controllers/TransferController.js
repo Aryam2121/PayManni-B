@@ -21,18 +21,18 @@ const validateCard = (card) => {
   return cardRegex.test(card.number) && expiryRegex.test(card.expiry) && cvvRegex.test(card.cvv);
 };
 
-// Create Transfer with Razorpay
+// Create Transfer without authentication
 const createTransfer = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    const { recipient, amount, paymentMethod, cardDetails, paypalId, upiId } = req.body;
-    if (!recipient || !amount || amount <= 0) {
-      return res.status(400).json({ message: "Invalid recipient or amount" });
+    const { senderId, recipient, amount, paymentMethod, cardDetails, paypalId, upiId } = req.body;
+    if (!senderId || !recipient || !amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid sender, recipient, or amount" });
     }
 
-    const user = await Userupi.findById(req.user.userId).session(session);
+    const user = await Userupi.findById(senderId).session(session);
     const recipientUser = await Userupi.findOne({ username: recipient }).session(session);
 
     if (!user || !recipientUser) {
@@ -42,7 +42,6 @@ const createTransfer = async (req, res) => {
     }
 
     if (paymentMethod === "wallet") {
-      // 🚀 Direct wallet transfer
       if (user.balance < amount) {
         await session.abortTransaction();
         session.endSession();
@@ -86,7 +85,6 @@ const createTransfer = async (req, res) => {
       return res.status(201).json({ message: "Transfer successful via Wallet" });
 
     } else {
-      // 🚀 Razorpay Flow
       if (paymentMethod === "card" && (!cardDetails || !validateCard(cardDetails))) {
         await session.abortTransaction();
         session.endSession();
@@ -152,11 +150,15 @@ const createTransfer = async (req, res) => {
   }
 };
 
-
-// Fetch user transfers
+// Fetch user transfers (without auth)
 const getTransfers = async (req, res) => {
   try {
-    const transfers = await Transfer.find({ sender: req.user.userId }).sort({ createdAt: -1 });
+    const { senderId } = req.body;
+    if (!senderId) {
+      return res.status(400).json({ message: "Sender ID required" });
+    }
+
+    const transfers = await Transfer.find({ sender: senderId }).sort({ createdAt: -1 });
     res.json(transfers);
   } catch (error) {
     Logger.error("Get Transfers Error", error);
