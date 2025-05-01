@@ -2,84 +2,64 @@ const Userupi = require("../models/Userupi");
 const jwt = require("jsonwebtoken");
 const Wallet = require("../models/Wallet");
 const WalletTransaction = require("../models/WalletTransaction");
-const admin = require("../firebaseAdmin"); // Import the Firebase admin SDK
+const admin = require("../firebaseAdmin");
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const getUserById = async (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    const user = await Userupi.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-
-    res.status(200).json(user); // send full user object
-  } catch (err) {
-    res.status(500).json({ msg: "Server error", err });
-  }
-};
-
-const getUserBankData = async (req, res) => {
-  const { userId } = req.params;
-
-  try {
-    const user = await Userupi.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-
-    res.json({
-      linkedAccounts: user.linkedAccounts || [],
-      transactions: user.transactions || [],
-      virtualUpiId: user.virtualUpiId || `${user.name}@paymanni`,
-    });
-  } catch (err) {
-    res.status(500).json({ msg: "Server error", err });
-  }
-};
-
+// 🚀 Updated registerUser to support both idToken and firebaseUid-based registration
 const registerUser = async (req, res) => {
-  const { idToken, name } = req.body;
+  const { idToken, firebaseUid, email, name } = req.body;
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const phoneNumber = decodedToken.phone_number;
+    let phoneNumber;
+    let upiId;
 
-    if (!phoneNumber) {
-      return res.status(400).json({ msg: "Phone number not found in Firebase token" });
+    // Case 1: Phone auth with ID token
+    if (idToken) {
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      phoneNumber = decodedToken.phone_number;
+
+      if (!phoneNumber) {
+        return res.status(400).json({ msg: "Phone number not found in Firebase token" });
+      }
+
+      upiId = `${phoneNumber}@paymanni`;
     }
-
-    const upiId = `${phoneNumber}@paymanni`;
+    // Case 2: Email registration using Firebase UID (manual registration)
+    else if (firebaseUid && email) {
+      const userRecord = await admin.auth().getUser(firebaseUid);
+      upiId = `${email.split("@")[0]}@paymanni`;
+      phoneNumber = userRecord.phoneNumber || null;
+    }
+    else {
+      return res.status(400).json({ msg: "Missing idToken or firebaseUid + email" });
+    }
 
     let existingUser = await Userupi.findOne({ upiId });
 
     if (existingUser) {
-      return res.status(400).json({ msg: "Phone number already registered" });
+      return res.status(400).json({ msg: "User already registered" });
     }
 
     const newUser = new Userupi({
       name: name || "New User",
-      email: `${phoneNumber}@paymanni.in`,
+      email: email || `${phoneNumber}@paymanni.in`,
       upiId,
       balance: 10000,
     });
+
     await newUser.save();
 
     const wallet = new Wallet({
       userId: newUser._id,
       balance: 10000,
     });
+
     await wallet.save();
 
     const registrationFee = 50;
-
     if (wallet.balance >= registrationFee) {
       await wallet.updateBalance(-registrationFee);
-
       await WalletTransaction.create({
         user: newUser._id,
         amount: registrationFee,
@@ -91,70 +71,55 @@ const registerUser = async (req, res) => {
     const token = jwt.sign({ userId: newUser._id }, JWT_SECRET, { expiresIn: "1h" });
 
     res.status(201).json({
-      msg: "Phone registration successful",
+      msg: "Registration successful",
       token,
       userId: newUser._id,
       user: newUser,
     });
+
   } catch (err) {
-    console.error("Phone register error:", err);
-    res.status(500).json({ msg: "Phone registration failed", err });
+    console.error("Register error:", err);
+    res.status(500).json({ msg: "Registration failed", err });
+  }
+};
+
+// Other methods unchanged
+const getUserById = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await Userupi.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    res.status(200).json(user);
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+
+const getUserBankData = async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const user = await Userupi.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+    res.json({
+      linkedAccounts: user.linkedAccounts || [],
+      transactions: user.transactions || [],
+      virtualUpiId: user.virtualUpiId || `${user.name}@paymanni`,
+    });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
   }
 };
 
 const loginUser = async (req, res) => {
   const { email, password, idToken } = req.body;
-
   try {
     let user;
 
-    // Check if login is via Email/Password
-    if (email && password) {
-      // Sign in with email and password using Firebase Authentication
-      const userCredential = await admin.auth().signInWithEmailAndPassword(email, password);
-      const firebaseUser = userCredential.user;
-
-      if (!firebaseUser) {
-        return res.status(400).json({ msg: "User not found" });
-      }
-
-      // Firebase ID Token
-      const token = await firebaseUser.getIdToken();
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      const phoneNumber = decodedToken.phone_number || null;
-
-      const upiId = phoneNumber ? `${phoneNumber}@paymanni` : `${email.split("@")[0]}@paymanni`;
-
-      user = await Userupi.findOne({ upiId });
-
-      if (!user) {
-        // Create a new user if not found
-        user = new Userupi({
-          name: firebaseUser.displayName || "New User",
-          email: firebaseUser.email,
-          upiId,
-          balance: 10000,
-        });
-        await user.save();
-
-        const wallet = new Wallet({
-          userId: user._id,
-          balance: 10000,
-        });
-        await wallet.save();
-      }
-
-    } else if (idToken) {
-      // If login is via phone OTP (idToken)
+    if (idToken) {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const phoneNumber = decodedToken.phone_number;
-
-      if (!phoneNumber) {
-        return res.status(400).json({ msg: "Phone number not found in token" });
-      }
-
+      if (!phoneNumber) return res.status(400).json({ msg: "Phone number not found in token" });
       const upiId = `${phoneNumber}@paymanni`;
-
       user = await Userupi.findOne({ upiId });
 
       if (!user) {
@@ -166,22 +131,19 @@ const loginUser = async (req, res) => {
         });
         await user.save();
 
-        const wallet = new Wallet({
-          userId: user._id,
-          balance: 10000,
-        });
+        const wallet = new Wallet({ userId: user._id, balance: 10000 });
         await wallet.save();
       }
-
+    } else if (email && password) {
+      return res.status(400).json({ msg: "Email/password login is not supported on server" });
     } else {
-      return res.status(400).json({ msg: "Email/password or ID token required" });
+      return res.status(400).json({ msg: "Missing idToken or email/password" });
     }
 
-    // Create a JWT token to authenticate further requests
     const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
 
     res.status(200).json({
-      msg: email ? "Email login successful" : "Phone login successful",
+      msg: "Login successful",
       token: jwtToken,
       userId: user._id,
       user,
@@ -192,7 +154,6 @@ const loginUser = async (req, res) => {
     res.status(500).json({ msg: "Authentication failed", err });
   }
 };
-
 
 const editUserProfile = async (req, res) => {
   const { userId } = req.params;
