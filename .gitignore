@@ -120,3 +120,4 @@ dist
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
 .DS_Store"firebase-service-account.json" 
+firebase-service-account.json
