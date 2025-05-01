@@ -19,11 +19,8 @@
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "express-validator": "^7.2.1",
-<<<<<<< HEAD
     "firebase": "^11.6.1",
     "firebase-admin": "^13.3.0",
-=======
->>>>>>> 814c3caee8ec9aa8fbd5b441347fa65952ef9e5f
     "google-auth-library": "^9.15.1",
     "jsonwebtoken": "^9.0.2",
     "latest": "^0.2.0",
