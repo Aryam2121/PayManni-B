@@ -2,7 +2,11 @@ const Userupi = require("../models/Userupi");
 const jwt = require("jsonwebtoken");
 const Wallet = require("../models/Wallet"); 
 const WalletTransaction = require("../models/WalletTransaction");
+<<<<<<< HEAD
 const admin = require("../firebaseAdmin"); // Import the Firebase admin SDK
+=======
+
+>>>>>>> 814c3caee8ec9aa8fbd5b441347fa65952ef9e5f
 const JWT_SECRET = process.env.JWT_SECRET;
 const getUserById = async (req, res) => {
   const { userId } = req.params;
@@ -40,6 +44,7 @@ const getUserBankData = async (req, res) => {
   }
 };
 const registerUser = async (req, res) => {
+<<<<<<< HEAD
   const { idToken, name } = req.body;
 
   try {
@@ -70,24 +75,56 @@ const registerUser = async (req, res) => {
     await newUser.save();
 
     // 4. Create wallet
+=======
+  const { name, email, password } = req.body;
+
+  try {
+    const existingUser = await Userupi.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ msg: "Email already in use" });
+    }
+
+    const newUser = new Userupi({
+      name,
+      email,
+      password,
+      balance: 10000, // Optional legacy
+    });
+
+    await newUser.save();
+
+    // ✅ Create a wallet for the new user
+>>>>>>> 814c3caee8ec9aa8fbd5b441347fa65952ef9e5f
     const wallet = new Wallet({
       userId: newUser._id,
       balance: 10000,
     });
     await wallet.save();
 
+<<<<<<< HEAD
     // 5. Deduct ₹50 registration fee
     const registrationFee = 50;
 
     if (wallet.balance >= registrationFee) {
       await wallet.updateBalance(-registrationFee);
 
+=======
+    // ✅ Deduct registration fee (e.g., ₹50)
+    const registrationFee = 50;
+
+    if (wallet.balance >= registrationFee) {
+      // Deduct fee
+      await wallet.updateBalance(-registrationFee); 
+
+      // ✅ Log transaction
+>>>>>>> 814c3caee8ec9aa8fbd5b441347fa65952ef9e5f
       await WalletTransaction.create({
         user: newUser._id,
         amount: registrationFee,
         type: "Withdraw",
         description: "Registration Fee Deducted",
       });
+<<<<<<< HEAD
     }
 
     // 6. Generate JWT for our app
@@ -156,6 +193,40 @@ const loginUser = async (req, res) => {
 };
 
 
+=======
+    } else {
+      return res.status(400).json({ msg: "Insufficient balance for registration fee" });
+    }
+
+    res.status(201).json({ msg: "User registered successfully", user: newUser });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await Userupi.findOne({ email });
+
+    if (!user || user.password !== password) {
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
+
+    // ✅ Token generation
+    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).json({ 
+      msg: "Login successful", 
+      token,        
+      userId: user._id,
+      user
+    });
+  } catch (err) {
+    res.status(500).json({ msg: "Server error", err });
+  }
+};
+>>>>>>> 814c3caee8ec9aa8fbd5b441347fa65952ef9e5f
 const editUserProfile = async (req, res) => {
   const { userId } = req.params;
   const updates = req.body;
