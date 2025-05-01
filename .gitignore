@@ -119,4 +119,4 @@ dist
 .pnp.*
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node
-.DS_Store
+.DS_Store"firebase-service-account.json" 
