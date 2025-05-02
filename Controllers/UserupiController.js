@@ -62,53 +62,64 @@ const registerUser = async (req, res) => {
     let upiId;
     let finalEmail;
     let finalName;
+    let finalFirebaseUid;
 
-    // Case 1: Phone auth with ID token
+    // Case 1: Phone auth with Firebase ID token
     if (idToken) {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       phoneNumber = decodedToken.phone_number;
-      firebaseUid = decodedToken.uid; 
+      finalFirebaseUid = decodedToken.uid;
+
       if (!phoneNumber) {
         return res.status(400).json({ msg: "Phone number not found in Firebase token" });
       }
 
       upiId = `${phoneNumber}@paymanni`;
+      finalEmail = `${phoneNumber}@paymanni.in`;
+      finalName = name || "New User";
     }
-    // Case 2: Email registration using Firebase UID (manual registration)
+    // Case 2: Email/Password registration using UID
     else if (firebaseUid && email) {
       const userRecord = await admin.auth().getUser(firebaseUid);
+      finalFirebaseUid = firebaseUid;
       upiId = `${email.split("@")[0]}@paymanni`;
       phoneNumber = userRecord.phoneNumber || null;
+      finalEmail = email;
+      finalName = name || "New User";
     }
     // Case 3: Google Sign-In
     else if (googleIdToken) {
       const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
       finalEmail = decodedGoogleToken.email;
       finalName = decodedGoogleToken.name || "Google User";
-      firebaseUid = decodedGoogleToken.uid; 
-      if (!finalEmail) return res.status(400).json({ msg: "Email not found in Google token" });
+      finalFirebaseUid = decodedGoogleToken.uid;
+
+      if (!finalEmail) {
+        return res.status(400).json({ msg: "Email not found in Google token" });
+      }
+
       upiId = `${finalEmail.split("@")[0]}@paymanni`;
-    }
-    else {
+    } else {
       return res.status(400).json({ msg: "Missing idToken or firebaseUid + email or googleIdToken" });
     }
 
-    // Check if user already exists based on the generated upiId
-    let existingUser = await Userupi.findOne({ upiId });
-
-    if (existingUser) {
-      return res.status(400).json({ msg: "User already registered" });
+    // Check for duplicates
+    const existingUserByUpi = await Userupi.findOne({ upiId });
+    if (existingUserByUpi) {
+      return res.status(400).json({ msg: "User already registered with this UPI ID" });
     }
-    const existingFirebaseUser = await Userupi.findOne({ firebaseUid });
-    if (existingFirebaseUser) {
+
+    const existingUserByUid = await Userupi.findOne({ firebaseUid: finalFirebaseUid });
+    if (existingUserByUid) {
       return res.status(400).json({ msg: "Firebase UID already linked to a user" });
     }
-    // Create a new user
+
+    // Create new user
     const newUser = new Userupi({
-      name: finalName || name || "New User",
-      email: finalEmail || email || `${phoneNumber}@paymanni.in`,
+      name: finalName,
+      email: finalEmail,
       upiId,
-      firebaseUid, // Save the firebaseUid to associate the user
+      firebaseUid: finalFirebaseUid,
       balance: 10000,
     });
 
@@ -140,12 +151,12 @@ const registerUser = async (req, res) => {
       userId: newUser._id,
       user: newUser,
     });
-
   } catch (err) {
     console.error("Register error:", err);
-    res.status(500).json({ msg: "Registration failed", err });
+    res.status(500).json({ msg: "Registration failed", error: err.message });
   }
 };
+
 const loginUser = async (req, res) => {
   const { email, password, idToken, googleIdToken } = req.body;
 
