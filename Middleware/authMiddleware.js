@@ -26,7 +26,11 @@ const authenticateUser = async (req, res, next) => {
         return res.status(401).json({ message: "User not found" });
       }
 
-      req.user = user;
+      req.user = {
+        ...user._doc,
+        id: user._id.toString(), 
+      };
+      
       next();
     } catch (error) {
       console.error("❌ Firebase Token Verification Failed:", error.message);

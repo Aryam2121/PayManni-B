@@ -101,7 +101,7 @@ const createLoanPaymentOrder = async (req, res) => {
     const options = {
       amount: Math.round(amount * 100), // in paise
       currency: "INR",
-      receipt: `loan_${loanId}_${Date.now()}`,
+      receipt: `emi_payment_loan_${loanId}_${Date.now()}`
       payment_capture: 1,
     };
 
@@ -129,7 +129,13 @@ const verifyLoanPayment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Payment verification failed" });
     }
 
-    res.status(200).json({ success: true, message: "Payment verified successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Payment verified successfully",
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id
+    }
+    );
   } catch (error) {
     console.error("❌ verifyLoanPayment error:", error);
     res.status(500).json({ success: false, message: "Error verifying payment", error: error.message });
@@ -158,8 +164,10 @@ const repayLoanEMI = async (req, res) => {
       amount,
       userUpi,
       status: "success",
-      type: "emi-payment"
+      type: "emi-payment",
+      date: new Date()
     };
+    
 
     loan.payments.push(payment);
     await loan.save();
