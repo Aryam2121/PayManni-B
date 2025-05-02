@@ -155,16 +155,9 @@ const loginUser = async (req, res) => {
       return newUser;
     };
 
-    if (email && password) {
-      const userCredential = await admin.auth().signInWithEmailAndPassword(email, password);
-      const firebaseUser = userCredential.user;
-
-      if (!firebaseUser) {
-        return res.status(400).json({ msg: "User not found" });
-      }
-
-      const token = await firebaseUser.getIdToken();
-      const decodedToken = await admin.auth().verifyIdToken(token);
+    if (idToken) {
+      // Verify the ID token from frontend (email/password, phone, or Google sign-in)
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
       const phoneNumber = decodedToken.phone_number || null;
 
       const upiId = phoneNumber ? `${phoneNumber}@paymanni` : `${email.split("@")[0]}@paymanni`;
@@ -172,29 +165,16 @@ const loginUser = async (req, res) => {
       user = await Userupi.findOne({ upiId });
 
       if (!user) {
-        user = await createNewUser(firebaseUser.displayName, firebaseUser.email, upiId);
+        // If the user doesn't exist, create a new one
+        user = await createNewUser(decodedToken.name || "New User", decodedToken.email || `${phoneNumber}@paymanni.in`, upiId);
       }
-
-    } else if (idToken) {
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
-      const phoneNumber = decodedToken.phone_number;
-
-      if (!phoneNumber) {
-        return res.status(400).json({ msg: "Phone number not found in token" });
-      }
-
-      const upiId = `${phoneNumber}@paymanni`;
-
-      user = await Userupi.findOne({ upiId });
-
-      if (!user) {
-        user = await createNewUser("New User", `${phoneNumber}@paymanni.in`, upiId);
-      }
-
+      
     } else if (googleIdToken) {
+      // Handle Google authentication
       const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
       const googleEmail = decodedGoogleToken.email;
       const name = decodedGoogleToken.name || "Google User";
+
       if (!googleEmail) return res.status(400).json({ msg: "Email not found in Google token" });
 
       const upiId = `${googleEmail.split("@")[0]}@paymanni`;
@@ -204,10 +184,12 @@ const loginUser = async (req, res) => {
       if (!user) {
         user = await createNewUser(name, googleEmail, upiId);
       }
+      
     } else {
-      return res.status(400).json({ msg: "Email/password, idToken, or googleIdToken required" });
+      return res.status(400).json({ msg: "idToken or googleIdToken required" });
     }
 
+    // Generate JWT for the user to authenticate subsequent requests
     const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
 
     res.status(200).json({
@@ -222,6 +204,7 @@ const loginUser = async (req, res) => {
     res.status(500).json({ msg: "Authentication failed", error: err.message });
   }
 };
+
 
 
 const editUserProfile = async (req, res) => {
