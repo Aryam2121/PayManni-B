@@ -19,7 +19,7 @@ const authenticateUser = async (req, res, next) => {
       console.log("✅ Firebase Decoded Token:", decodedToken);
 
       const userId = decodedToken.uid;
-      const user = await Userupi.findById(userId).select("-password");
+      const user = await Userupi.findOne({ firebaseUid: userId }).select("-password");
 
       if (!user) {
         console.log("❌ User not found in DB for UID:", userId);

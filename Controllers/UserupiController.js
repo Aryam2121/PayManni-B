@@ -183,7 +183,8 @@ const loginUser = async (req, res) => {
         return res.status(400).json({ msg: "Email or phone number required in token" });
       }
 
-      user = await Userupi.findOne({ upiId });
+      const firebaseUid = decodedToken.uid;
+      user = await Userupi.findOne({ firebaseUid });
 
       if (!user) {
         // If the user doesn't exist, create a new one
