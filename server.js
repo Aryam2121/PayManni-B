@@ -45,8 +45,11 @@ app.use(express.json());
 app.use(cors({
   origin: ['http://localhost:5173', 'https://pay-manni.vercel.app'],
   methods: 'GET,POST,PUT,DELETE',
-  allowedHeaders: 'Content-Type,Authorization'
+  allowedHeaders: 'Content-Type,Authorization',
+  credentials: true, // Allow credentials (cookies, session data)
 }));
+app.options('*', cors()); // Handle preflight requests
+
 
 // ✅ 1️⃣ CREATE ORDER API
 app.post("/create-order", async (req, res) => {
