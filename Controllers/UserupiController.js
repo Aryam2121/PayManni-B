@@ -159,23 +159,35 @@ const loginUser = async (req, res) => {
       // Verify the ID token from frontend (email/password, phone, or Google sign-in)
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const phoneNumber = decodedToken.phone_number || null;
+      const emailFromToken = decodedToken.email; // Get the email from the token
 
-      const upiId = phoneNumber ? `${phoneNumber}@paymanni` : `${email.split("@")[0]}@paymanni`;
+      // Ensure email is available
+      const upiId = phoneNumber 
+        ? `${phoneNumber}@paymanni` 
+        : emailFromToken 
+          ? `${emailFromToken.split("@")[0]}@paymanni` 
+          : null;
+
+      if (!upiId) {
+        return res.status(400).json({ msg: "Email or phone number required in token" });
+      }
 
       user = await Userupi.findOne({ upiId });
 
       if (!user) {
         // If the user doesn't exist, create a new one
-        user = await createNewUser(decodedToken.name || "New User", decodedToken.email || `${phoneNumber}@paymanni.in`, upiId);
+        user = await createNewUser(decodedToken.name || "New User", emailFromToken || `${phoneNumber}@paymanni.in`, upiId);
       }
-      
+
     } else if (googleIdToken) {
       // Handle Google authentication
       const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
       const googleEmail = decodedGoogleToken.email;
       const name = decodedGoogleToken.name || "Google User";
 
-      if (!googleEmail) return res.status(400).json({ msg: "Email not found in Google token" });
+      if (!googleEmail) {
+        return res.status(400).json({ msg: "Email not found in Google token" });
+      }
 
       const upiId = `${googleEmail.split("@")[0]}@paymanni`;
 
@@ -184,7 +196,7 @@ const loginUser = async (req, res) => {
       if (!user) {
         user = await createNewUser(name, googleEmail, upiId);
       }
-      
+
     } else {
       return res.status(400).json({ msg: "idToken or googleIdToken required" });
     }
@@ -204,8 +216,6 @@ const loginUser = async (req, res) => {
     res.status(500).json({ msg: "Authentication failed", error: err.message });
   }
 };
-
-
 
 const editUserProfile = async (req, res) => {
   const { userId } = req.params;
