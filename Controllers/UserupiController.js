@@ -44,11 +44,13 @@ const getUserBankData = async (req, res) => {
 
 // 🚀 Updated registerUser to support both idToken and firebaseUid-based registration
 const registerUser = async (req, res) => {
-  const { idToken, firebaseUid, email, name,googleIdToken } = req.body;
+  const { idToken, firebaseUid, email, name, googleIdToken } = req.body;
 
   try {
     let phoneNumber;
     let upiId;
+    let finalEmail;
+    let finalName;
 
     // Case 1: Phone auth with ID token
     if (idToken) {
@@ -67,28 +69,31 @@ const registerUser = async (req, res) => {
       upiId = `${email.split("@")[0]}@paymanni`;
       phoneNumber = userRecord.phoneNumber || null;
     }
-      // Case 3: Google Sign-In
-      else if (googleIdToken) {
-        const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
-        finalEmail = decodedGoogleToken.email;
-        finalName = decodedGoogleToken.name || "Google User";
-        if (!finalEmail) return res.status(400).json({ msg: "Email not found in Google token" });
-        upiId = `${finalEmail.split("@")[0]}@paymanni`;
-      }
+    // Case 3: Google Sign-In
+    else if (googleIdToken) {
+      const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
+      finalEmail = decodedGoogleToken.email;
+      finalName = decodedGoogleToken.name || "Google User";
+      if (!finalEmail) return res.status(400).json({ msg: "Email not found in Google token" });
+      upiId = `${finalEmail.split("@")[0]}@paymanni`;
+    }
     else {
       return res.status(400).json({ msg: "Missing idToken or firebaseUid + email or googleIdToken" });
     }
 
+    // Check if user already exists based on the generated upiId
     let existingUser = await Userupi.findOne({ upiId });
 
     if (existingUser) {
       return res.status(400).json({ msg: "User already registered" });
     }
 
+    // Create a new user
     const newUser = new Userupi({
-      name: name || "New User",
-      email: email || `${phoneNumber}@paymanni.in`,
+      name: finalName || name || "New User",
+      email: finalEmail || email || `${phoneNumber}@paymanni.in`,
       upiId,
+      firebaseUid, // Save the firebaseUid to associate the user
       balance: 10000,
     });
 
@@ -126,14 +131,32 @@ const registerUser = async (req, res) => {
     res.status(500).json({ msg: "Registration failed", err });
   }
 };
-
 const loginUser = async (req, res) => {
   const { email, password, idToken, googleIdToken } = req.body;
 
   try {
     let user;
 
-    // Check if login is via Email/Password
+    // Function to create a new user if not found
+    const createNewUser = async (name, email, upiId) => {
+      const newUser = new Userupi({
+        name: name || "New User",
+        email: email,
+        upiId,
+        balance: 10000,
+      });
+      await newUser.save();
+
+      const wallet = new Wallet({
+        userId: newUser._id,
+        balance: 10000,
+      });
+      await wallet.save();
+
+      return newUser;
+    };
+
+    // Case 1: Login via Email/Password
     if (email && password) {
       // Sign in with email and password using Firebase Authentication
       const userCredential = await admin.auth().signInWithEmailAndPassword(email, password);
@@ -154,23 +177,11 @@ const loginUser = async (req, res) => {
 
       if (!user) {
         // Create a new user if not found
-        user = new Userupi({
-          name: firebaseUser.displayName || "New User",
-          email: firebaseUser.email,
-          upiId,
-          balance: 10000,
-        });
-        await user.save();
-
-        const wallet = new Wallet({
-          userId: user._id,
-          balance: 10000,
-        });
-        await wallet.save();
+        user = await createNewUser(firebaseUser.displayName, firebaseUser.email, upiId);
       }
 
     } else if (idToken) {
-      // If login is via phone OTP (idToken)
+      // Case 2: Login via Phone OTP (idToken)
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const phoneNumber = decodedToken.phone_number;
 
@@ -183,42 +194,23 @@ const loginUser = async (req, res) => {
       user = await Userupi.findOne({ upiId });
 
       if (!user) {
-        user = new Userupi({
-          name: "New User",
-          email: `${phoneNumber}@paymanni.in`,
-          upiId,
-          balance: 10000,
-        });
-        await user.save();
-
-        const wallet = new Wallet({
-          userId: user._id,
-          balance: 10000,
-        });
-        await wallet.save();
+        user = await createNewUser("New User", `${phoneNumber}@paymanni.in`, upiId);
       }
- // Google Login
- else if (googleIdToken) {
-  const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
-  const googleEmail = decodedGoogleToken.email;
-  const name = decodedGoogleToken.name || "Google User";
-  if (!googleEmail) return res.status(400).json({ msg: "Email not found in Google token" });
 
-  const upiId = `${googleEmail.split("@")[0]}@paymanni`;
-  user = await Userupi.findOne({ upiId });
+    } else if (googleIdToken) {
+      // Case 3: Login via Google Sign-In
+      const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
+      const googleEmail = decodedGoogleToken.email;
+      const name = decodedGoogleToken.name || "Google User";
+      if (!googleEmail) return res.status(400).json({ msg: "Email not found in Google token" });
 
-  if (!user) {
-    user = new Userupi({
-      name,
-      email: googleEmail,
-      upiId,
-      balance: 10000,
-    });
-    await user.save();
-    const wallet = new Wallet({ userId: user._id, balance: 10000 });
-    await wallet.save();
-  }
-}
+      const upiId = `${googleEmail.split("@")[0]}@paymanni`;
+
+      user = await Userupi.findOne({ upiId });
+
+      if (!user) {
+        user = await createNewUser(name, googleEmail, upiId);
+      }
     } else {
       return res.status(400).json({ msg: "Email/password, idToken or googleIdToken required" });
     }
@@ -227,7 +219,7 @@ const loginUser = async (req, res) => {
     const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
 
     res.status(200).json({
-      msg: email ? "Email login successful" : "Phone login successful",
+      msg: email ? "Email login successful" : idToken ? "Phone login successful" : "Google login successful",
       token: jwtToken,
       userId: user._id,
       user,
