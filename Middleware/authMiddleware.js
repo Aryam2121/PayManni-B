@@ -1,31 +1,39 @@
-const jwt = require("jsonwebtoken");
+const admin = require("firebase-admin");
 const Userupi = require("../models/Userupi");
 
+// Initialize Firebase Admin SDK (make sure it's initialized only once)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(), // or use cert() if using a service account JSON
+  });
+}
+
 const authenticateUser = async (req, res, next) => {
-  let token;
+  const authHeader = req.headers.authorization;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const idToken = authHeader.split(" ")[1];
+
     try {
-      token = req.headers.authorization.split(" ")[1];
-      console.log("Received Token:", token);
+      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      console.log("✅ Firebase Decoded Token:", decodedToken);
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log("Decoded Token:", decoded);
+      const userId = decodedToken.uid;
+      const user = await Userupi.findById(userId).select("-password");
 
-      req.user = await Userupi.findById(decoded.userId).select("-password");
-
-      if (!req.user) {
-        console.log("❌ User not found for ID:", decoded.userId);
+      if (!user) {
+        console.log("❌ User not found in DB for UID:", userId);
         return res.status(401).json({ message: "User not found" });
       }
 
+      req.user = user;
       next();
     } catch (error) {
-      console.error("JWT Verification Error:", error.message);
-      return res.status(401).json({ message: "Not authorized, invalid token" });
+      console.error("❌ Firebase Token Verification Failed:", error.message);
+      return res.status(401).json({ message: "Invalid or expired token" });
     }
   } else {
-    return res.status(401).json({ message: "No token, authorization denied" });
+    return res.status(401).json({ message: "No token provided" });
   }
 };
 
