@@ -17,7 +17,16 @@ const razorpay = new Razorpay({
 // ✅ Get all loans for a specific user
 const getAllLoans = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: "Unauthorized: user not found" });
+    }
+
     const loans = await Loan.find({ userId: req.user.id });
+
+    if (!loans || loans.length === 0) {
+      return res.status(200).json({ success: true, loans: [], message: "No loans found" });
+    }
+
     res.status(200).json({ success: true, loans });
   } catch (error) {
     console.error("❌ getAllLoans error:", error);
@@ -42,40 +51,32 @@ const getLoanById = async (req, res) => {
 // ✅ Apply for a loan
 const applyLoan = async (req, res) => {
   try {
-    const { amount, term } = req.body;
-    console.log("📥 applyLoan input:", { amount, term });
+    const userId = req.user.id;
 
-    if (!amount || !term) {
-      return res.status(400).json({ success: false, message: "Amount and term are required" });
+    const { amount, term, interestRate, monthlyEMI, approvalChance } = req.body;
+
+    if (!amount || !term || !interestRate || !monthlyEMI || !approvalChance) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
-
-    if (parseFloat(amount) < 100 || parseFloat(amount) > 700000000) {
-      return res.status(400).json({ success: false, message: "Loan amount must be between ₹100 and ₹700,000,000." });
-    }
-
-    if (parseInt(term) < 3 || parseInt(term) > 24) {
-      return res.status(400).json({ success: false, message: "Loan term must be between 3 and 24 months." });
-    }
-
-    const interestRate = amount <= 500 ? 5 : 7;
-    const rate = interestRate / 100 / 12;
-    const emi = (parseFloat(amount) * rate) / (1 - Math.pow(1 + rate, -parseInt(term)));
-    const approvalRate = Math.min(95, Math.max(30, 100 - parseFloat(amount) / 10));
-    const approvalChance = `${approvalRate}% chance of approval`;
 
     const newLoan = new Loan({
-      userId: req.user.id,
+      userId,
       amount,
       term,
       interestRate,
-      monthlyEMI: emi.toFixed(2),
+      monthlyEMI,
       approvalChance,
-      status: "success",
-      type: "loan",
+      status: "pending",
+      type: "loan"
     });
 
-    const savedLoan = await newLoan.save();
-    res.status(201).json({ success: true, loan: savedLoan });
+    await newLoan.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Loan applied successfully",
+      loan: newLoan
+    });
   } catch (error) {
     console.error("❌ applyLoan error:", error);
     res.status(500).json({ success: false, message: "Server error", error: error.message });
@@ -138,32 +139,39 @@ const verifyLoanPayment = async (req, res) => {
 // ✅ Repay EMI and save to loan record
 const repayLoanEMI = async (req, res) => {
   try {
-    const { loanId, paymentId, amount, userUpi } = req.body;
-    console.log("📥 repayLoanEMI input:", { loanId, paymentId, amount, userUpi });
+    const userId = req.user.id;
+    const { loanId } = req.params;
+    const { amount, userUpi } = req.body;
 
-    if (!loanId || !paymentId || !amount || !userUpi) {
-      return res.status(400).json({ success: false, message: "All fields are required" });
+    if (!amount || !userUpi) {
+      return res.status(400).json({ success: false, message: "Amount and userUpi are required" });
     }
 
-    const loan = await Loan.findById(loanId);
+    const loan = await Loan.findOne({ _id: loanId, userId });
+
     if (!loan) {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
-    loan.payments.push({
-      paymentId,
+    const payment = {
+      paymentId: `EMI_${Date.now()}`,
       amount,
       userUpi,
-      date: new Date(),
       status: "success",
-      type: "emi-payment",
-    });
+      type: "emi-payment"
+    };
 
+    loan.payments.push(payment);
     await loan.save();
-    res.status(200).json({ success: true, message: "EMI payment recorded", loan });
+
+    res.status(200).json({
+      success: true,
+      message: "EMI payment successful",
+      loan
+    });
   } catch (error) {
     console.error("❌ repayLoanEMI error:", error);
-    res.status(500).json({ success: false, message: "Error processing repayment", error: error.message });
+    res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 

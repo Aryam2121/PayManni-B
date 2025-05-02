@@ -11,7 +11,7 @@ const {
 const router = express.Router();
 
 // ✅ GET all loan applications
-router.get("/loans", getAllLoans);
+router.get("/getAllloans", getAllLoans);
 
 // ✅ GET loan application by ID
 router.get("/loans/:id", getLoanById);
@@ -26,6 +26,5 @@ router.post("/loans/payment/order", createLoanPaymentOrder);
 router.post("/loans/payment/verify", verifyLoanPayment);
 
 // ✅ Repay Loan EMI
-router.post("/loans/repay", repayLoanEMI);
-
+router.post('/:loanId/repay', repayLoanEMI);
 module.exports = router;
