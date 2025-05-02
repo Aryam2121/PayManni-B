@@ -1,4 +1,4 @@
-const admin = require("firebase-admin");
+const admin = require("../firebaseAdmin");
 const Userupi = require("../models/Userupi");
 
 // Initialize Firebase Admin SDK (make sure it's initialized only once)
