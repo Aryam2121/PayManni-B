@@ -23,24 +23,35 @@ const getUserById = async (req, res) => {
 };
 
 const getUserBankData = async (req, res) => {
+  // Extract userId from request parameters
   const { userId } = req.params;
 
+  // Check if userId is provided
+  if (!userId) {
+    return res.status(400).json({ msg: "UserId is required" });
+  }
+
   try {
+    // Find user by userId in the Userupi collection
     const user = await Userupi.findById(userId);
 
+    // If user is not found, return a 404 response
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
 
+    // Return user bank data
     res.json({
-      linkedAccounts: user.linkedAccounts || [],
-      transactions: user.transactions || [],
-      virtualUpiId: user.virtualUpiId || `${user.name}@paymanni`,
+      linkedAccounts: user.linkedAccounts || [], // Default to empty array if not present
+      transactions: user.transactions || [], // Default to empty array if not present
+      virtualUpiId: user.virtualUpiId || `${user.name}@paymanni`, // Default virtual UPI ID if not present
     });
   } catch (err) {
-    res.status(500).json({ msg: "Server error", err });
+    console.error(err); // Log the error for better debugging
+    res.status(500).json({ msg: "Server error", error: err.message }); // Return more detailed error message
   }
 };
+
 
 // 🚀 Updated registerUser to support both idToken and firebaseUid-based registration
 const registerUser = async (req, res) => {
