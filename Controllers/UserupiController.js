@@ -67,7 +67,7 @@ const registerUser = async (req, res) => {
     if (idToken) {
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       phoneNumber = decodedToken.phone_number;
-
+      firebaseUid = decodedToken.uid; 
       if (!phoneNumber) {
         return res.status(400).json({ msg: "Phone number not found in Firebase token" });
       }
@@ -85,6 +85,7 @@ const registerUser = async (req, res) => {
       const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
       finalEmail = decodedGoogleToken.email;
       finalName = decodedGoogleToken.name || "Google User";
+      firebaseUid = decodedGoogleToken.uid; 
       if (!finalEmail) return res.status(400).json({ msg: "Email not found in Google token" });
       upiId = `${finalEmail.split("@")[0]}@paymanni`;
     }
@@ -98,7 +99,10 @@ const registerUser = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ msg: "User already registered" });
     }
-
+    const existingFirebaseUser = await Userupi.findOne({ firebaseUid });
+    if (existingFirebaseUser) {
+      return res.status(400).json({ msg: "Firebase UID already linked to a user" });
+    }
     // Create a new user
     const newUser = new Userupi({
       name: finalName || name || "New User",
