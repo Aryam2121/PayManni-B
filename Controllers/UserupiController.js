@@ -137,7 +137,6 @@ const loginUser = async (req, res) => {
   try {
     let user;
 
-    // Function to create a new user if not found
     const createNewUser = async (name, email, upiId) => {
       const newUser = new Userupi({
         name: name || "New User",
@@ -156,9 +155,7 @@ const loginUser = async (req, res) => {
       return newUser;
     };
 
-    // Case 1: Login via Email/Password
     if (email && password) {
-      // Sign in with email and password using Firebase Authentication
       const userCredential = await admin.auth().signInWithEmailAndPassword(email, password);
       const firebaseUser = userCredential.user;
 
@@ -166,7 +163,6 @@ const loginUser = async (req, res) => {
         return res.status(400).json({ msg: "User not found" });
       }
 
-      // Firebase ID Token
       const token = await firebaseUser.getIdToken();
       const decodedToken = await admin.auth().verifyIdToken(token);
       const phoneNumber = decodedToken.phone_number || null;
@@ -176,12 +172,10 @@ const loginUser = async (req, res) => {
       user = await Userupi.findOne({ upiId });
 
       if (!user) {
-        // Create a new user if not found
         user = await createNewUser(firebaseUser.displayName, firebaseUser.email, upiId);
       }
 
     } else if (idToken) {
-      // Case 2: Login via Phone OTP (idToken)
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const phoneNumber = decodedToken.phone_number;
 
@@ -198,7 +192,6 @@ const loginUser = async (req, res) => {
       }
 
     } else if (googleIdToken) {
-      // Case 3: Login via Google Sign-In
       const decodedGoogleToken = await admin.auth().verifyIdToken(googleIdToken);
       const googleEmail = decodedGoogleToken.email;
       const name = decodedGoogleToken.name || "Google User";
@@ -212,10 +205,9 @@ const loginUser = async (req, res) => {
         user = await createNewUser(name, googleEmail, upiId);
       }
     } else {
-      return res.status(400).json({ msg: "Email/password, idToken or googleIdToken required" });
+      return res.status(400).json({ msg: "Email/password, idToken, or googleIdToken required" });
     }
 
-    // Create a JWT token to authenticate further requests
     const jwtToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" });
 
     res.status(200).json({
@@ -227,7 +219,7 @@ const loginUser = async (req, res) => {
 
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ msg: "Authentication failed", err });
+    res.status(500).json({ msg: "Authentication failed", error: err.message });
   }
 };
 
