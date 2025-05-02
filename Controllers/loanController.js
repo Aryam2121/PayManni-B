@@ -101,7 +101,7 @@ const createLoanPaymentOrder = async (req, res) => {
     const options = {
       amount: Math.round(amount * 100), // in paise
       currency: "INR",
-      receipt: `emi_payment_loan_${loanId}_${Date.now()}`
+      receipt: `emi_payment_loan_${loanId}_${Date.now()}`,
       payment_capture: 1,
     };
 
