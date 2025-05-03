@@ -15,6 +15,7 @@ const app = express();
 require("./config/passport");
 
 // 🔹 Routes Import
+const kycRoutes = require("./Routes/kycRoutes");
 const userRoutes = require("./Routes/userRoutes");
 const WalletRoutes = require("./Routes/WalletRoutes");
 const contactRoutes = require("./Routes/ContactRoutes");
@@ -156,5 +157,6 @@ app.use("/api", RegisteredUserUpiRoute); // UPI routes
 app.use("/api", BankRoutes); // Bank routes
 app.use("/api",GenerateBusRoutes);
 app.use("/api/transactions", unifiedTransactionRoutes);// 🔹 Server Start
+app.use("/api", kycRoutes); // KYC routes
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
