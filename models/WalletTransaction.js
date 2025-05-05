@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const walletTransactionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'Userupi', required: true },
   amount: { type: Number, required: true },
   type: { type: String, required: true }, // e.g., 'Payment', 'Receive'
   description: { type: String, required: true },

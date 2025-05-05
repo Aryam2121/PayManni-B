@@ -35,6 +35,7 @@ const RegisteredUserUpiRoute = require("./Routes/RegisteredUserUpiRoute.js");
 const BankRoutes = require("./Routes/bankRoutes.js");
 const unifiedTransactionRoutes = require("./Routes/unifiedTransactionRoute.js");
 const GenerateBusRoutes = require("./Routes/GenerateBusRoutes.js");
+const adminRoutes = require('./Routes/adminRoutes');
 // ✅ Initialize Razorpay Instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
@@ -158,5 +159,6 @@ app.use("/api", BankRoutes); // Bank routes
 app.use("/api",GenerateBusRoutes);
 app.use("/api/transactions", unifiedTransactionRoutes);// 🔹 Server Start
 app.use("/api", kycRoutes); // KYC routes
+app.use('/api/admin', adminRoutes);
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
