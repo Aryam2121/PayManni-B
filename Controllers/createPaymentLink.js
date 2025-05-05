@@ -19,8 +19,8 @@ const createPaymentLink = async (req, res) => {
       description: `Movie Booking for ${selectedSeats.join(", ")}`,
       customer: {
         name: "Aryaman Gupta",
-        contact: "9123456789",
-        email: "customer@example.com",
+        contact: "917579677966",
+        email: "aryamangupta@example.com",
       },
       notify: {
         email: true,
