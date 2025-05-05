@@ -26,7 +26,7 @@ const createPaymentLink = async (req, res) => {
         email: true,
         sms: true,
       },
-      callback_url: `http://localhost:5173/payment-success?movieId=${movieId}&userId=${userId}&seats=${selectedSeats.join(",")}&amount=${amount}`,
+      callback_url: `https://pay-manni.vercel.app/payment-success?movieId=${movieId}&userId=${userId}&seats=${selectedSeats.join(",")}&amount=${amount}`,
       callback_method: "get",
     });
 
