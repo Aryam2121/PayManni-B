@@ -1,5 +1,5 @@
-const express = require('express');
-const { getAllTransactions } = require('../controllers/unifiedTransactionController');
+const express = require("express");
+const { getAllTransactions } = require('../Controllers/UnifiedTransactionController');
 const Userupi = require('../models/Userupi');
 const Bank = require('../models/Bank');
 const router = express.Router();
@@ -55,4 +55,8 @@ router.get('/analytics', async (req, res) => {
     res.json({ totalUsers, totalBalance, totalRevenue });
   } catch (err) {
     console.error('Error in analytics:', err);
-    res.status(500).json({ error: 'Error computing analytics
+    res.status(500).json({ error: 'Error computing analytics' });
+  }
+});
+
+module.exports = router;
