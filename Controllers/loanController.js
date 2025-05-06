@@ -111,7 +111,7 @@ const createLoanPaymentOrder = async (req, res) => {
     }
 
     // ✅ Shorten the receipt ID to fit the Razorpay limit
-    const receiptId = `emi_payment_loan_${loanId.substring(0, 10)}_${Date.now()}`;
+    const receiptId = `loan_${loanId.slice(-6)}_${Date.now().toString().slice(-6)}`;
 
     // ✅ Prepare Razorpay order options
     const options = {
