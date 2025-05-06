@@ -147,8 +147,7 @@ const repayLoanEMI = async (req, res) => {
   try {
     const userId = req.user.id;
     const { loanId } = req.params;
-    const { amount, userUpi } = req.body;
-
+    const { amount, userUpi, paymentId } = req.body;
     if (!amount || !userUpi) {
       return res.status(400).json({ success: false, message: "Amount and userUpi are required" });
     }
@@ -160,14 +159,13 @@ const repayLoanEMI = async (req, res) => {
     }
 
     const payment = {
-      paymentId: `EMI_${Date.now()}`,
+      paymentId: paymentId || `EMI_${Date.now()}`, // fallback
       amount,
       userUpi,
       status: "success",
       type: "emi-payment",
       date: new Date()
     };
-    
 
     loan.payments.push(payment);
     await loan.save();
