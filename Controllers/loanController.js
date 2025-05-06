@@ -87,31 +87,52 @@ const applyLoan = async (req, res) => {
 const createLoanPaymentOrder = async (req, res) => {
   try {
     const { loanId, amount } = req.body;
-    console.log("📥 createLoanPaymentOrder input:", { loanId, amount });
 
+    console.log("📥 createLoanPaymentOrder input:", req.body);
+
+    // ✅ Check Razorpay keys
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({ success: false, message: "Razorpay keys not configured properly" });
+    }
+
+    // ✅ Validate input
     if (!loanId || !amount) {
       return res.status(400).json({ success: false, message: "Loan ID and amount are required" });
     }
 
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid amount" });
+    }
+
+    // ✅ Find the loan
     const loan = await Loan.findById(loanId);
     if (!loan) {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
+    // ✅ Prepare Razorpay order options
     const options = {
-      amount: Math.round(amount * 100), // in paise
+      amount: Math.round(amount * 100), // convert to paise
       currency: "INR",
       receipt: `emi_payment_loan_${loanId}_${Date.now()}`,
       payment_capture: 1,
     };
 
     console.log("📤 Razorpay order options:", options);
+
+    // ✅ Create the order
     const order = await razorpay.orders.create(options);
 
     res.status(201).json({ success: true, order });
+
   } catch (error) {
-    console.error("❌ createLoanPaymentOrder error:", error);
-    res.status(500).json({ success: false, message: "Error creating order", error: error.message });
+    console.error("❌ Razorpay order creation error:", error?.error?.description || error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Error creating order",
+      error: error?.error?.description || error.message
+    });
   }
 };
 
