@@ -110,11 +110,14 @@ const createLoanPaymentOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: "Loan not found" });
     }
 
+    // ✅ Shorten the receipt ID to fit the Razorpay limit
+    const receiptId = `emi_payment_loan_${loanId.substring(0, 10)}_${Date.now()}`;
+
     // ✅ Prepare Razorpay order options
     const options = {
       amount: Math.round(amount * 100), // convert to paise
       currency: "INR",
-      receipt: `emi_payment_loan_${loanId}_${Date.now()}`,
+      receipt: receiptId, // short receipt ID
       payment_capture: 1,
     };
 
@@ -135,6 +138,7 @@ const createLoanPaymentOrder = async (req, res) => {
     });
   }
 };
+
 
 // ✅ Verify Razorpay payment
 const verifyLoanPayment = async (req, res) => {
