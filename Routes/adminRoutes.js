@@ -1,5 +1,5 @@
 const express = require("express");
-const { getAllTransactions } = require('../Controllers/UnifiedTransactionController.js');
+const getUserTransactions = require('../utils/getUserTransactions');
 const Userupi = require('../models/Userupi');
 const Bank = require('../models/Bank');
 const router = express.Router();
@@ -20,17 +20,11 @@ router.get('/transactions', async (req, res) => {
     const allUserIds = await Userupi.find({}, '_id');
     const userIds = allUserIds.map(u => u._id);
 
-    // Pretend it's a global admin request — use your controller logic repeatedly
     let allTransactions = [];
 
     for (const userId of userIds) {
-      req.user = { id: userId }; // temporarily inject
-      const result = await getAllTransactions(req, { status: () => ({ json: () => {} }) });
-
-      // Assuming getAllTransactions returns transaction array
-      if (result?.transactions?.length) {
-        allTransactions.push(...result.transactions.map(tx => ({ ...tx, userId })));
-      }
+      const userTxns = await getUserTransactions(userId);
+      allTransactions.push(...userTxns.map(tx => ({ ...tx, userId })));
     }
 
     res.json(allTransactions);
