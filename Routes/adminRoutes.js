@@ -1,5 +1,5 @@
 const express = require("express");
-const { getAllTransactions } = require('../Controllers/UnifiedTransactionController');
+const { getAllTransactions } = require('../Controllers/UnifiedTransactionController.js');
 const Userupi = require('../models/Userupi');
 const Bank = require('../models/Bank');
 const router = express.Router();
